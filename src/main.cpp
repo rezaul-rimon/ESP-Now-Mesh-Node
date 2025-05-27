@@ -1,19 +1,27 @@
 #include <WiFi.h>
 #include <esp_now.h>
 
-String lastMessage = "";  // 🔸 Variable to store the last received message
+String lastMessage = "";
 
 void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len) {
-  lastMessage = "";  // Clear previous message
+  lastMessage = "";
   for (int i = 0; i < len; i++) {
     lastMessage += (char)incomingData[i];
   }
 
-  Serial.print("📩 Received message: ");
-  Serial.println(lastMessage);
+  // ✅ Extract Gateway ID and Message
+  int separatorIndex = lastMessage.indexOf(',');
+  if (separatorIndex != -1) {
+    String gatewayID = lastMessage.substring(0, separatorIndex);
+    String message = lastMessage.substring(separatorIndex + 1);
 
-  // ✅ You can now act based on lastMessage
-  // Example: if (lastMessage == "red") { turnOnRedLED(); }
+    Serial.print("📡 From Gateway: ");
+    Serial.println(gatewayID);
+    Serial.print("📩 Message: ");
+    Serial.println(message);
+  } else {
+    Serial.println("⚠️ Malformed message received!");
+  }
 }
 
 void setup() {
@@ -31,6 +39,5 @@ void setup() {
 }
 
 void loop() {
-  // You can check `lastMessage` here if needed
-  // Example: if (lastMessage == "green") { ... }
+  // Idle loop
 }
