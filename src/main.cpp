@@ -5,19 +5,15 @@
 #include <deque>
 #include <algorithm>
 
+// Include the necessary libraries for IR control
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
-#include <IRrecv.h>
-#include <IRutils.h>
-#include <assert.h>
-#include <IRac.h>
-#include <IRtext.h>
 
 #define LED_PIN 4
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
-const char* nodeID = "node-02";
+const char* nodeID = "node-03";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
@@ -161,16 +157,6 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len){
   Serial.println("  V Swing:     " + ac.v_swing);
   Serial.println("  H Swing:     " + ac.h_swing);
 
-  if(ac.powerOn == "on"){
-    Serial.println("✅ AC turned ON");
-  } else if(ac.powerOn == "off"){
-    Serial.println("✅ AC turned OFF");
-  } else {
-    Serial.println("❌ unknown power cmd: "+ac.powerOn);
-    return;
-  }
-  
-
   
   // ACK back
     // === Send ACK ===
@@ -182,6 +168,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len){
 
 void setup(){
   Serial.begin(115200);
+  
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
   leds[0]=CRGB::Black; FastLED.show();
