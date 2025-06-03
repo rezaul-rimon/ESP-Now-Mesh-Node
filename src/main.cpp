@@ -125,18 +125,18 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   String msg((char *)data, len);
   Serial.println("\n📥 " + msg);
 
-  // Validate comma count
+  // Validate comma count (expecting 5 fields)
   int commas = std::count(msg.begin(), msg.end(), ',');
   if (commas != 4) {
-    Serial.println("❌ Invalid message format,(expecting 5 fields), not rebroadcast");
+    Serial.println("❌ Invalid message format, not rebroadcasted");
     return;
   }
 
-  // Parse 5 fields: sender_id, receiver_id, command, message_type, message_id
-  int i1 = msg.indexOf(','),
-      i2 = msg.indexOf(',', i1 + 1),
-      i3 = msg.indexOf(',', i2 + 1),
-      i4 = msg.indexOf(',', i3 + 1);
+  // Parse 5 fields
+  int i1 = msg.indexOf(',');
+  int i2 = msg.indexOf(',', i1 + 1);
+  int i3 = msg.indexOf(',', i2 + 1);
+  int i4 = msg.indexOf(',', i3 + 1);
 
   String sender   = msg.substring(0, i1);
   String receiver = msg.substring(i1 + 1, i2);
@@ -144,63 +144,23 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   String type     = msg.substring(i3 + 1, i4);
   String msg_id   = msg.substring(i4 + 1);
 
-  // Rebroadcast if needed
+  // 🔁 Rebroadcast any valid message (cmd, ack, tmp, etc.)
   rebroadcastIfNeeded(msg_id, type, msg);
 
-  // Check if message is intended for this node
-  if (receiver != nodeID) {
-    Serial.printf("⏭ Not my message (receiver: %s)\n", receiver.c_str());
-    return;
+  // ❌ Do NOT process any command or ACK
+  if (receiver == nodeID) {
+    Serial.printf("ℹ️ Message is for me, but this node is a temp-hub. Ignoring command.\n");
   }
-
-  // Handle ACKs (don't process further)
-  if (type == "ack") {
-    Serial.println("ℹ️ ACK received, no further processing.");
-    return;
-  }
-
-  // Prevent duplicate command execution
-  if (msg_id == lastCmdID) {
-    Serial.println("⚠️ Duplicate CMD ignored.");
-    return;
-  }
-  lastCmdID = msg_id;
-
-  // Show command info
-  Serial.println("✅ CMD: " + command);
-
-  // === LED Actions ===
-  if (command == "red")        leds[0] = CRGB::Red;
-  else if (command == "green") leds[0] = CRGB::Green;
-  else if (command == "blue")  leds[0] = CRGB::Blue;
-  else if (command == "orange")leds[0] = CRGB::Orange;
-  else if (command == "purple")leds[0] = CRGB::Purple;
-  else if (command == "yellow")leds[0] = CRGB::Yellow;
-  else if (command == "white") leds[0] = CRGB::White;
-  else if (command == "off")   leds[0] = CRGB::Black;
-  FastLED.show();
-
-  // === Try to parse command as structured AC command ===
-  Command ac = parseCommand(command);
-  Serial.println("🔍 Parsed Command:");
-  Serial.println("  Power On:    " + ac.powerOn);
-  Serial.println("  Temperature: " + ac.temperature);
-  Serial.println("  Mode:        " + ac.mode);
-  Serial.println("  Fan Speed:   " + ac.fanSpeed);
-  Serial.println("  Protocol:    " + ac.protocol);
-  Serial.println("  V Swing:     " + ac.v_swing);
-  Serial.println("  H Swing:     " + ac.h_swing);
-
-  // === Send ACK ===
-  String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
-  Serial.println("📤 ACK: " + ack);
-  esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
-  // leds[0] = CRGB::Green;  // Indicate ACK with green LED
-  // FastLED.show(); 
-  // delay(100);  // Short delay to show the green LED
-  // leds[0] = CRGB::Black; // Turn off LED after ACK
-  // FastLED.show();
 }
+
+String readTemperature() {
+  // Simulated temperature and humidity values with two decimal places
+  float temp = random(2000, 3000) / 100.0; // 20.00 to 30.00 °C
+  float hum  = random(5000, 8000) / 100.0; // 50.00% to 80.00% RH
+
+  return String(temp, 2) + "/" + String(hum, 2);
+}
+
 
 void setup(){
   Serial.begin(115200);
@@ -231,19 +191,22 @@ String generateMessageID() {
 void loop() {
   unsigned long now = millis();
 
-  // 💓 Send heartbeat every 30 seconds
+  // 💓 Send temperature every 30 seconds
   if (now - lastHBPublishTime >= hbPublishInterval) {
     lastHBPublishTime = now;
 
-    String hb = String(nodeID) + "," + "gw" + "," + "25.56/68.95" + ",tmp," + generateMessageID();
-    Serial.println("Heartbeat: " + hb);
-    esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
-    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+    String temp = readTemperature();  // Replace with your actual reading
+    String msg = String(nodeID) + ",gw," + temp + ",tmp," + generateMessageID();
+
+    Serial.println("📤 Sending Temp: " + msg);
+    esp_now_send(broadcastAddress, (uint8_t *)msg.c_str(), msg.length());
+
+    leds[0] = CRGB::Blue;
     FastLED.show();
-    delay(100);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    delay(100);
+    leds[0] = CRGB::Black;
     FastLED.show();
   }
 
-  delay(50);  // Optional: can remove later for non-blocking loop
+  delay(10);  // Minimal blocking
 }
