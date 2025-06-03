@@ -13,12 +13,12 @@
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
-const char* nodeID = "node-00";
+const char* nodeID = "node-02";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 unsigned long lastHBPublishTime = 0;
-const unsigned long hbPublishInterval = 1 * 10 * 1000;
+const unsigned long hbPublishInterval = 1 * 60 * 1000;
 
 struct Command {
   String powerOn;     // on/off_status
@@ -73,84 +73,115 @@ void recordForward(const String &key) {
   if (fwdCache.size()>MAX_FWDS) fwdCache.pop_front();
 }
 
-void rebroadcastIfNeeded(const String &msg_id, const String &type, const String &raw){
-  if(!isRepeater) return;
-  String key=type+":"+msg_id;
-  if(alreadyForwarded(key)) return;
-  // skip cmds for me
-  if(type=="cmd" && raw.indexOf(nodeID)>0) return;
-  // skip own ACKs
-  if(type=="ack" && raw.startsWith(String(nodeID)+",")) return;
+void rebroadcastIfNeeded(const String &msg_id, const String &type, const String &raw) {
+  if (!isRepeater) {
+    Serial.println("ℹ️ Not a repeater, skipping rebroadcast.");
+    return;
+  }
 
-  delay(random(10,51));
-  esp_now_send(broadcastAddress,(uint8_t*)raw.c_str(),raw.length());
-  Serial.println("🔁 Re-broadcasted: "+raw);
+  String key = type + ":" + msg_id;
+  if (alreadyForwarded(key)) {
+    Serial.println("🔁 Already forwarded: " + key);
+    return;
+  }
+
+  // Parse fields to extract sender and receiver
+  int i1 = raw.indexOf(',');
+  int i2 = raw.indexOf(',', i1 + 1);
+  if (i1 < 0 || i2 < 0) {
+    Serial.println("❌ Invalid format in rebroadcast check: " + raw);
+    return;
+  }
+
+  String sender = raw.substring(0, i1);
+  String receiver = raw.substring(i1 + 1, i2);
+
+  // Skip CMDs targeted to self
+  if (type == "cmd" && receiver == nodeID) {
+    Serial.println("⏭ CMD intended for me (" + receiver + "), not rebroadcasting.");
+    return;
+  }
+
+// Skip self-originated messages
+  if (sender == nodeID) {
+    Serial.println("⏭ Message originated by me (" + sender + "), not rebroadcasting.");
+    return;
+  }
+
+  // Random short delay to avoid ESP-NOW collision
+  delay(random(10, 51));
+
+  esp_now_send(broadcastAddress, (uint8_t *)raw.c_str(), raw.length());
+  Serial.println("🔁 Re-broadcasted: " + raw);
   recordForward(key);
+  leds[0] = CRGB::White;  // Indicate rebroadcast with blue LED
+  FastLED.show();
+  delay(100);  // Short delay to show the blue LED
+  leds[0] = CRGB::Black; // Turn off LED after rebroadcast  
+  FastLED.show();
 }
 
-void onReceive(const uint8_t *mac, const uint8_t *data, int len){
-  String msg((char*)data,len);
-  Serial.println("\n📥 "+msg);
+void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
+  String msg((char *)data, len);
+  Serial.println("\n📥 " + msg);
+
+  // Validate comma count
   int commas = std::count(msg.begin(), msg.end(), ',');
-  // ACK (3 commas): node_id,cmd,ack,msg_id
-  if(commas==3 && msg.indexOf(",ack,")>0){
-    int i1=msg.indexOf(','), i2=msg.indexOf(',',i1+1), i3=msg.indexOf(',',i2+1);
-    String node=msg.substring(0,i1),
-      cmd =msg.substring(i1+1,i2),
-      type=msg.substring(i2+1,i3),
-      id  =msg.substring(i3+1);
-    rebroadcastIfNeeded(id,type,msg);
-    Serial.println("ℹ️ ACK ignored locally");
+  if (commas != 4) {
+    Serial.println("❌ Invalid message format,(expecting 5 fields), not rebroadcast");
     return;
   }
-  // CMD (4 commas): gw_id,node_id,cmd,cmd,msg_id
-  int i1=msg.indexOf(','),
-    i2=msg.indexOf(',',i1+1),
-    i3=msg.indexOf(',',i2+1),
-    i4=msg.indexOf(',',i3+1);
 
-  if(i1<0||i2<0||i3<0||i4<0){
-    Serial.println("❌ bad format"); return;
-  }
-  String gw=msg.substring(0,i1),
-    node=msg.substring(i1+1,i2),
-    cmd=msg.substring(i2+1,i3),
-    type=msg.substring(i3+1,i4),
-    id=msg.substring(i4+1);
-  rebroadcastIfNeeded(id,type,msg);
-  if(node!=nodeID || type!="cmd"){ 
-    Serial.printf("⏭ not mine/type=%s\n",type.c_str()); 
+  // Parse 5 fields: sender_id, receiver_id, command, message_type, message_id
+  int i1 = msg.indexOf(','),
+      i2 = msg.indexOf(',', i1 + 1),
+      i3 = msg.indexOf(',', i2 + 1),
+      i4 = msg.indexOf(',', i3 + 1);
+
+  String sender   = msg.substring(0, i1);
+  String receiver = msg.substring(i1 + 1, i2);
+  String command  = msg.substring(i2 + 1, i3);
+  String type     = msg.substring(i3 + 1, i4);
+  String msg_id   = msg.substring(i4 + 1);
+
+  // Rebroadcast if needed
+  rebroadcastIfNeeded(msg_id, type, msg);
+
+  // Check if message is intended for this node
+  if (receiver != nodeID) {
+    Serial.printf("⏭ Not my message (receiver: %s)\n", receiver.c_str());
     return;
   }
-  if(id==lastCmdID){
-    Serial.println("⚠️ dup cmd"); return;
-  }
-  lastCmdID=id;
 
-  // execute
-  Serial.println("✅ CMD: "+cmd);
-
-  if(cmd=="red")   leds[0]=CRGB::Red;
-  else if(cmd=="green") leds[0]=CRGB::Green;
-  else if(cmd=="blue")  leds[0]=CRGB::Blue;
-  else if(cmd=="orange") leds[0]=CRGB::Orange;
-  else if(cmd=="purple") leds[0]=CRGB::Purple;
-  else if(cmd=="yellow") leds[0]=CRGB::Yellow;
-  else if(cmd=="white")  leds[0]=CRGB::White;
-  else if(cmd=="off")    leds[0]=CRGB::Black;
-  // else leds[0]=CRGB::Black;
-  else{
-    Serial.println("❌ unknown cmd: "+cmd);
-    // leds[0]=CRGB::Black;
+  // Handle ACKs (don't process further)
+  if (type == "ack") {
+    Serial.println("ℹ️ ACK received, no further processing.");
+    return;
   }
+
+  // Prevent duplicate command execution
+  if (msg_id == lastCmdID) {
+    Serial.println("⚠️ Duplicate CMD ignored.");
+    return;
+  }
+  lastCmdID = msg_id;
+
+  // Show command info
+  Serial.println("✅ CMD: " + command);
+
+  // === LED Actions ===
+  if (command == "red")        leds[0] = CRGB::Red;
+  else if (command == "green") leds[0] = CRGB::Green;
+  else if (command == "blue")  leds[0] = CRGB::Blue;
+  else if (command == "orange")leds[0] = CRGB::Orange;
+  else if (command == "purple")leds[0] = CRGB::Purple;
+  else if (command == "yellow")leds[0] = CRGB::Yellow;
+  else if (command == "white") leds[0] = CRGB::White;
+  else if (command == "off")   leds[0] = CRGB::Black;
   FastLED.show();
 
-  
-  // Parse the command
-  // Example cmd: "on/24/cool/auto/tcl112/vswing/hSwing"
-  Command ac = parseCommand(cmd);
-
-  // Print out each field
+  // === Try to parse command as structured AC command ===
+  Command ac = parseCommand(command);
   Serial.println("🔍 Parsed Command:");
   Serial.println("  Power On:    " + ac.powerOn);
   Serial.println("  Temperature: " + ac.temperature);
@@ -160,13 +191,15 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len){
   Serial.println("  V Swing:     " + ac.v_swing);
   Serial.println("  H Swing:     " + ac.h_swing);
 
-  
-  // ACK back
-    // === Send ACK ===
-  String ack = String(nodeID) + "," + cmd + ",ack," + id;
+  // === Send ACK ===
+  String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
   Serial.println("📤 ACK: " + ack);
   esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
-
+  // leds[0] = CRGB::Green;  // Indicate ACK with green LED
+  // FastLED.show(); 
+  // delay(100);  // Short delay to show the green LED
+  // leds[0] = CRGB::Black; // Turn off LED after ACK
+  // FastLED.show();
 }
 
 void setup(){
@@ -174,6 +207,9 @@ void setup(){
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
+  FastLED.setBrightness(50); // Set initial brightness
+  leds[0] = CRGB::Orange; FastLED.show();
+  delay(1000); // Show orange LED for 1 second
   leds[0]=CRGB::Black; FastLED.show();
   if(esp_now_init()!=ESP_OK){ Serial.println("Init FAIL"); return; }
   esp_now_peer_info_t pi={};
@@ -199,9 +235,14 @@ void loop() {
   if (now - lastHBPublishTime >= hbPublishInterval) {
     lastHBPublishTime = now;
 
-    String hb = String(nodeID) + "," + "heartbeat" + ",hb," + generateMessageID();
+    String hb = String(nodeID) + "," + "gw" + "," + "heartbeat" + ",hb," + generateMessageID();
     Serial.println("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(100);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
   }
 
   delay(50);  // Optional: can remove later for non-blocking loop
