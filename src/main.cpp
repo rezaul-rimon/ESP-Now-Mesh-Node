@@ -5,9 +5,12 @@
 #include <deque>
 #include <algorithm>
 
-// Include the necessary libraries for IR control
-#include <IRremoteESP8266.h>
-#include <IRsend.h>
+#include <Wire.h>
+#include "Adafruit_SHT31.h"
+
+Adafruit_SHT31 sht = Adafruit_SHT31();
+bool shtInitialized = false;
+
 
 #define LED_PIN 4
 #define NUM_LEDS 1
@@ -17,50 +20,9 @@ const char* nodeID = "temp-05";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-unsigned long lastHBPublishTime = 0;
-const unsigned long hbPublishInterval = 1 * 60 * 1000;
+// unsigned long lastHBPublishTime = 0;
+// const unsigned long hbPublishInterval = 1 * 60 * 1000;
 
-struct Command {
-  String powerOn;     // on/off_status
-  String temperature; // e.g. "24"
-  String mode;        // e.g. "cool"
-  String fanSpeed;    // e.g. "auto"
-  String protocol;    // e.g. "tcl112"
-  String v_swing;     // optional
-  String h_swing;     // optional
-};
-
-Command parseCommand(const String &cmdStr) {
-  Command c;
-  int start = 0, idx;
-  int field = 0;
-  while ((idx = cmdStr.indexOf('/', start)) != -1 && field < 6) {
-    String part = cmdStr.substring(start, idx);
-    switch (field) {
-      case 0: c.powerOn     = part; break;
-      case 1: c.temperature = part; break;
-      case 2: c.mode        = part; break;
-      case 3: c.fanSpeed    = part; break;
-      case 4: c.protocol    = part; break;
-      case 5: c.v_swing     = part; break;
-    }
-    start = idx + 1;
-    field++;
-  }
-  // Last segment (rest of the string)
-  String last = cmdStr.substring(start);
-  if      (field == 0) c.powerOn     = last;
-  else if (field == 1) c.temperature = last;
-  else if (field == 2) c.mode        = last;
-  else if (field == 3) c.fanSpeed    = last;
-  else if (field == 4) c.protocol    = last;
-  else if (field == 5) c.v_swing     = last;
-  else                 c.h_swing     = last;
-  return c;
-}
-
-// cache last handled CMD id to avoid dup exec
-String lastCmdID;
 // cache recent rebroadcasts to stop loops
 std::deque<String> fwdCache;
 const size_t MAX_FWDS=20;
@@ -154,23 +116,40 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 }
 
 String readTemperature() {
-  // Simulated temperature and humidity values with two decimal places
-  float temp = random(2000, 3000) / 100.0; // 20.00 to 30.00 °C
-  float hum  = random(5000, 8000) / 100.0; // 50.00% to 80.00% RH
+  if (!shtInitialized) return "NA/NA";
 
-  return String(temp, 2) + "/" + String(hum, 2);
+  float temp = sht.readTemperature();
+  float hum  = sht.readHumidity();
+
+  if (!isnan(temp) && !isnan(hum)) {
+    return String(temp, 2) + "/" + String(hum, 2);
+  } else {
+    return "ERR/ERR";
+  }
 }
 
 
 void setup(){
   Serial.begin(115200);
-  
-  WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
   FastLED.setBrightness(50); // Set initial brightness
   leds[0] = CRGB::Orange; FastLED.show();
-  delay(1000); // Show orange LED for 1 second
+  delay(500); // Show orange LED for 1 second
   leds[0]=CRGB::Black; FastLED.show();
+
+  // First attempt
+  if (sht.begin(0x44)) {
+    shtInitialized = true;
+    Serial.println("✅ SHT3x sensor initialized.");
+    leds[0] = CRGB::Green; FastLED.show();
+    delay(1000);
+    leds[0] = CRGB::Black; FastLED.show();
+  } else {
+    Serial.println("⏳ SHT3x not found, will retry in loop.");
+  }
+  
+  WiFi.mode(WIFI_STA); WiFi.disconnect();
+  
   if(esp_now_init()!=ESP_OK){ Serial.println("Init FAIL"); return; }
   esp_now_peer_info_t pi={};
   memcpy(pi.peer_addr,broadcastAddress,6);
@@ -189,18 +168,57 @@ String generateMessageID() {
 }
 
 void loop() {
-  unsigned long now = millis();
+  static unsigned long lastHBPublishTime = 0;
+  const unsigned long hbPublishInterval = 60000; // 60 seconds
 
-  // 💓 Send temperature every 30 seconds
+  // 🔴 Handle sensor reinitialization & LED blinking if not ready
+  if (!shtInitialized) {
+    static unsigned long lastAttempt = 0;
+    static unsigned long lastBlink = 0;
+    static bool ledOn = false;
+
+    // 🔄 Retry sensor init every 10 seconds
+    if (millis() - lastAttempt > 10000) {
+      Serial.println("🔄 Retrying SHT3x init...");
+      if (sht.begin(0x44)) {
+        shtInitialized = true;
+        Serial.println("✅ SHT3x initialized during loop.");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(1000);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      }
+      lastAttempt = millis();
+    }
+
+    // 🔴 Blink red LED every 500ms
+    if (millis() - lastBlink > 500) {
+      lastBlink = millis();
+      ledOn = !ledOn;
+      leds[0] = ledOn ? CRGB::Red : CRGB::Black;
+      FastLED.show();
+    }
+  }
+
+  // 📤 Send sensor data (or error) every 30 seconds
+  unsigned long now = millis();
   if (now - lastHBPublishTime >= hbPublishInterval) {
     lastHBPublishTime = now;
 
-    String temp = readTemperature();  // Replace with your actual reading
-    String msg = String(nodeID) + ",gw," + temp + ",tmp," + generateMessageID();
+    String tempHum;
+    if (shtInitialized) {
+      tempHum = readTemperature();  // Returns "25.66/66.58" or similar
+    } else {
+      tempHum = "Error/Error";
+    }
+
+    String msg = String(nodeID) + ",gw," + tempHum + ",tmp," + generateMessageID();
 
     Serial.println("📤 Sending Temp: " + msg);
     esp_now_send(broadcastAddress, (uint8_t *)msg.c_str(), msg.length());
 
+    // 🔵 Blink blue LED briefly to show transmission
     leds[0] = CRGB::Blue;
     FastLED.show();
     delay(100);
