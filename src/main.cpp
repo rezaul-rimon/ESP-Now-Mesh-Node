@@ -13,7 +13,7 @@
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
-const char* nodeID = "node-02";
+const char* nodeID = "temp-05";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
@@ -235,7 +235,7 @@ void loop() {
   if (now - lastHBPublishTime >= hbPublishInterval) {
     lastHBPublishTime = now;
 
-    String hb = String(nodeID) + "," + "gw" + "," + "heartbeat" + ",hb," + generateMessageID();
+    String hb = String(nodeID) + "," + "gw" + "," + "25.56/68.95" + ",tmp," + generateMessageID();
     Serial.println("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
     leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
