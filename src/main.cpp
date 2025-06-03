@@ -17,6 +17,9 @@ const char* nodeID = "node-03";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
+unsigned long lastHBPublishTime = 0;
+const unsigned long hbPublishInterval = 1 * 10 * 1000;
+
 struct Command {
   String powerOn;     // on/off_status
   String temperature; // e.g. "24"
@@ -181,6 +184,25 @@ void setup(){
   Serial.printf("Node %s ready, repeater=%d\n", nodeID, isRepeater);
 }
 
-void loop(){
-  delay(50);
+// Function to generate a unique 4-character message ID (hex)
+String generateMessageID() {
+  uint16_t randNum = esp_random() & 0xFFFF;
+  char id[5];
+  sprintf(id, "%04X", randNum);
+  return String(id);
+}
+
+void loop() {
+  unsigned long now = millis();
+
+  // 💓 Send heartbeat every 30 seconds
+  if (now - lastHBPublishTime >= hbPublishInterval) {
+    lastHBPublishTime = now;
+
+    String hb = String(nodeID) + "," + "heartbeat" + ",hb," + generateMessageID();
+    Serial.println("Heartbeat: " + hb);
+    esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+  }
+
+  delay(50);  // Optional: can remove later for non-blocking loop
 }
