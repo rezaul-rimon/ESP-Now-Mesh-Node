@@ -13,7 +13,7 @@
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
-const char* nodeID = "node-03";
+const char* nodeID = "node-00";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
