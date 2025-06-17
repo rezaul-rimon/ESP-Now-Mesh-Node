@@ -12,18 +12,49 @@
 const uint16_t kIrLedPin = 27; // GPIO for IR LED
 // Include the necessary libraries for IR control
 
+#include <ir_Airton.h>
+#include <ir_Airwell.h>
+#include <ir_Amcor.h>
+#include <ir_Argo.h>
+#include <ir_Bosch.h>
+#include <ir_Carrier.h>
+#include <ir_Coolix.h>
+#include <ir_Corona.h>
+#include <ir_Daikin.h>
+#include <ir_Ecoclim.h>
+#include <ir_Goodweather.h>
+#include <ir_Gree.h>
+#include <ir_Kelon.h>
+#include <ir_Kelvinator.h>
+#include <ir_Lg.h>
+#include <ir_Magiquest.h>
+#include <ir_Midea.h>
+#include <ir_Mirage.h>
+#include <ir_Mitsubishi.h>
+#include <ir_Nec.h>
+#include <ir_Neoclima.h>
+#include <ir_Panasonic.h>
+#include <ir_Rhoss.h>
+#include <ir_Samsung.h>
+#include <ir_Sanyo.h>
+#include <ir_Sharp.h>
 #include <ir_Tcl.h>
+#include <ir_Teco.h>
+#include <ir_Transcold.h>
+#include <ir_Trotec.h>
+#include <ir_Truma.h>
+#include <ir_Voltas.h>
+#include <ir_York.h>
 
 const uint32_t kBaudRate = 115200;
 const uint16_t kCaptureBufferSize = 1024;
-
 IRsend irsend(kIrLedPin);
 
-// IRCoolixAC coolixAC(kIrLedPin);
-// IRGoodweatherAc goodweatherAC(kIrLedPin); // Goodweather AC object
-// IRMitsubishiAC mitsubishiAC(kIrLedPin);
+IRCoolixAC coolixAC(kIrLedPin);
+IRGoodweatherAc goodweatherAC(kIrLedPin);
+IRMitsubishiAC mitsubishiAC(kIrLedPin);
 IRTcl112Ac tcl112ACS(kIrLedPin);
-// IRElectraAc electraAC(kIrLedPin);
+IRElectraAc electraAC(kIrLedPin);
 
 #define LED_PIN 4
 #define NUM_LEDS 1
@@ -137,6 +168,7 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
   FastLED.show();
 }
 
+/////----------------//////
 // Handle TCL112 AC commands
 void handleTCL112(const Command& ac) {
   if (ac.powerOn.equalsIgnoreCase("on")) {
@@ -161,6 +193,106 @@ void handleTCL112(const Command& ac) {
   tcl112ACS.send();
   Serial.println("✅ TCL112 AC command sent.");
 }
+
+/////--------Handle Coolix AC--------//////
+void handleCoolix(const Command& ac) {
+  if (ac.powerOn.equalsIgnoreCase("on")) {
+    coolixAC.on();
+    coolixAC.setTemp(ac.temperature.toInt());
+
+    if      (ac.fanSpeed.equalsIgnoreCase("high")) coolixAC.setFan(kCoolixFanMax);
+    else if (ac.fanSpeed.equalsIgnoreCase("med"))  coolixAC.setFan(kCoolixFanMed);
+    else if (ac.fanSpeed.equalsIgnoreCase("low"))  coolixAC.setFan(kCoolixFanMin);
+    else if (ac.fanSpeed.equalsIgnoreCase("auto")) coolixAC.setFan(kCoolixFanAuto);
+    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+
+    if      (ac.mode.equalsIgnoreCase("cool")) coolixAC.setMode(kCoolixCool);
+    else if (ac.mode.equalsIgnoreCase("fan"))  coolixAC.setMode(kCoolixFan);
+    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+  } else {
+    coolixAC.off();
+  }
+
+  delay(100);
+  coolixAC.send();
+  Serial.println("✅ Coolix AC command sent.");
+}
+
+/////--------Handle Goodweather AC--------//////
+void handleGoodweather(const Command& ac) {
+  if (ac.powerOn.equalsIgnoreCase("on")) {
+    goodweatherAC.on();
+    goodweatherAC.setTemp(ac.temperature.toFloat());
+
+    if      (ac.fanSpeed.equalsIgnoreCase("high")) goodweatherAC.setFan(kGoodweatherFanHigh);
+    else if (ac.fanSpeed.equalsIgnoreCase("med"))  goodweatherAC.setFan(kGoodweatherFanMed);
+    else if (ac.fanSpeed.equalsIgnoreCase("low"))  goodweatherAC.setFan(kGoodweatherFanLow);
+    else if (ac.fanSpeed.equalsIgnoreCase("auto")) goodweatherAC.setFan(kGoodweatherFanAuto);
+    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+
+    if      (ac.mode.equalsIgnoreCase("cool")) goodweatherAC.setMode(kGoodweatherCool);
+    else if (ac.mode.equalsIgnoreCase("fan"))  goodweatherAC.setMode(kGoodweatherFan);
+    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+  } else {
+    goodweatherAC.off();
+  }
+
+  delay(100);
+  goodweatherAC.send();
+  Serial.println("✅ Goodweather AC command sent.");
+}
+
+/////--------Handle Electra AC--------//////
+void handleElectra(const Command& ac) {
+  if (ac.powerOn.equalsIgnoreCase("on")) {
+    electraAC.on();
+    electraAC.setTemp(ac.temperature.toFloat());
+
+    if      (ac.fanSpeed.equalsIgnoreCase("high")) electraAC.setFan(kElectraAcFanHigh);
+    else if (ac.fanSpeed.equalsIgnoreCase("med"))  electraAC.setFan(kElectraAcFanMed);
+    else if (ac.fanSpeed.equalsIgnoreCase("low"))  electraAC.setFan(kElectraAcFanLow);
+    else if (ac.fanSpeed.equalsIgnoreCase("auto")) electraAC.setFan(kElectraAcFanAuto);
+    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+
+    if      (ac.mode.equalsIgnoreCase("cool")) electraAC.setMode(kElectraAcCool);
+    else if (ac.mode.equalsIgnoreCase("fan"))  electraAC.setMode(kElectraAcFan);
+    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+  } else {
+    electraAC.off();
+  }
+
+  delay(100);
+  electraAC.send();
+  Serial.println("✅ Electra AC command sent.");
+}
+
+/////--------Handle Mitsubishi AC--------//////
+void handleMitsubishi(const Command& ac) {
+  if (ac.powerOn.equalsIgnoreCase("on")) {
+    mitsubishiAC.on();
+    mitsubishiAC.setTemp(ac.temperature.toInt());
+
+    if      (ac.fanSpeed.equalsIgnoreCase("high")) mitsubishiAC.setFan(kMitsubishiAcFanMax);
+    else if (ac.fanSpeed.equalsIgnoreCase("med"))  mitsubishiAC.setFan(kMitsubishiAcFanAuto);
+    else if (ac.fanSpeed.equalsIgnoreCase("low"))  mitsubishiAC.setFan(kMitsubishiAcFanQuiet);
+    else if (ac.fanSpeed.equalsIgnoreCase("auto")) mitsubishiAC.setFan(kMitsubishiAcFanAuto);
+    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+
+    if      (ac.mode.equalsIgnoreCase("cool")) mitsubishiAC.setMode(kMitsubishiAcCool);
+    else if (ac.mode.equalsIgnoreCase("fan"))  mitsubishiAC.setMode(kMitsubishiAcFan);
+    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+  } else {
+    mitsubishiAC.off();
+  }
+
+  delay(100);
+  mitsubishiAC.send();
+  Serial.println("✅ Mitsubishi AC command sent.");
+}
+
+
+
+
 
 
 void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
@@ -237,9 +369,13 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   if (ac.protocol.equalsIgnoreCase("tcl112")) {
   handleTCL112(ac);
   } else if (ac.protocol.equalsIgnoreCase("coolix")) {
-    // handleCoolix(ac);
+    handleCoolix(ac);
   } else if (ac.protocol.equalsIgnoreCase("goodweather")) {
-    //handleGoodweather(ac);  // You’ll create this too
+    handleGoodweather(ac);
+  } else if (ac.protocol.equalsIgnoreCase("mitsubishi")) {
+    handleMitsubishi(ac);
+  } else if (ac.protocol.equalsIgnoreCase("electra")) {
+    handleElectra(ac);
   } else {
     Serial.println("❌ Unsupported protocol: " + ac.protocol);
   }
@@ -269,11 +405,12 @@ void setup(){
     while (!Serial);
     assert(irutils::lowLevelSanityCheck() == 0);
 
-  // coolixAC.begin();
-  // goodweatherAC.begin();
-  // mitsubishiAC.begin();
   tcl112ACS.begin();
-  // electraAC.begin();
+  coolixAC.begin();
+  goodweatherAC.begin();
+  electraAC.begin();
+  mitsubishiAC.begin();
+
   irsend.begin();
   ////////////////////
   
@@ -284,6 +421,7 @@ void setup(){
   delay(1000); // Show orange LED for 1 second
   leds[0]=CRGB::Black; FastLED.show();
   if(esp_now_init()!=ESP_OK){ Serial.println("Init FAIL"); return; }
+
   esp_now_peer_info_t pi={};
   memcpy(pi.peer_addr,broadcastAddress,6);
   pi.channel=0; pi.encrypt=false;
