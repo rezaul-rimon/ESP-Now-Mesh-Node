@@ -5,9 +5,25 @@
 #include <deque>
 #include <algorithm>
 
-// Include the necessary libraries for IR control
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
+#include <IRac.h>
+
+const uint16_t kIrLedPin = 27; // GPIO for IR LED
+// Include the necessary libraries for IR control
+
+#include <ir_Tcl.h>
+
+const uint32_t kBaudRate = 115200;
+const uint16_t kCaptureBufferSize = 1024;
+
+IRsend irsend(kIrLedPin);
+
+// IRCoolixAC coolixAC(kIrLedPin);
+// IRGoodweatherAc goodweatherAC(kIrLedPin); // Goodweather AC object
+// IRMitsubishiAC mitsubishiAC(kIrLedPin);
+IRTcl112Ac tcl112ACS(kIrLedPin);
+// IRElectraAc electraAC(kIrLedPin);
 
 #define LED_PIN 4
 #define NUM_LEDS 1
@@ -121,6 +137,32 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
   FastLED.show();
 }
 
+// Handle TCL112 AC commands
+void handleTCL112(const Command& ac) {
+  if (ac.powerOn.equalsIgnoreCase("on")) {
+    tcl112ACS.on();
+    tcl112ACS.setTemp(ac.temperature.toFloat());
+
+    if      (ac.fanSpeed.equalsIgnoreCase("high")) tcl112ACS.setFan(kTcl112AcFanHigh);
+    else if (ac.fanSpeed.equalsIgnoreCase("med"))  tcl112ACS.setFan(kTcl112AcFanMed);
+    else if (ac.fanSpeed.equalsIgnoreCase("low"))  tcl112ACS.setFan(kTcl112AcFanLow);
+    else if (ac.fanSpeed.equalsIgnoreCase("auto")) tcl112ACS.setFan(kTcl112AcFanAuto);
+    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+
+    if      (ac.mode.equalsIgnoreCase("cool")) tcl112ACS.setMode(kTcl112AcCool);
+    else if (ac.mode.equalsIgnoreCase("fan"))  tcl112ACS.setMode(kTcl112AcFan);
+    // else if (ac.mode.equalsIgnoreCase("auto")) tcl112ACS.setMode(kTcl112AcAuto);
+    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+  } else {
+    tcl112ACS.off();
+  }
+
+  delay(100);
+  tcl112ACS.send();
+  Serial.println("✅ TCL112 AC command sent.");
+}
+
+
 void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   String msg((char *)data, len);
   Serial.println("\n📥 " + msg);
@@ -191,6 +233,19 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   Serial.println("  V Swing:     " + ac.v_swing);
   Serial.println("  H Swing:     " + ac.h_swing);
 
+  // === Handle AC commands ===
+  if (ac.protocol.equalsIgnoreCase("tcl112")) {
+  handleTCL112(ac);
+  } else if (ac.protocol.equalsIgnoreCase("coolix")) {
+    // handleCoolix(ac);
+  } else if (ac.protocol.equalsIgnoreCase("goodweather")) {
+    //handleGoodweather(ac);  // You’ll create this too
+  } else {
+    Serial.println("❌ Unsupported protocol: " + ac.protocol);
+  }
+
+
+
   // === Send ACK ===
   String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
   Serial.println("📤 ACK: " + ack);
@@ -204,6 +259,23 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
 void setup(){
   Serial.begin(115200);
+
+  /////////////////////
+  #if defined(ESP8266)
+    Serial.begin(kBaudRate, SERIAL_8N1, SERIAL_TX_ONLY);
+    #else
+    Serial.begin(kBaudRate, SERIAL_8N1);
+    #endif
+    while (!Serial);
+    assert(irutils::lowLevelSanityCheck() == 0);
+
+  // coolixAC.begin();
+  // goodweatherAC.begin();
+  // mitsubishiAC.begin();
+  tcl112ACS.begin();
+  // electraAC.begin();
+  irsend.begin();
+  ////////////////////
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
