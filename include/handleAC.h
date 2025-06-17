@@ -1,4 +1,45 @@
-#include <config.h>
+// #include <config.h>
+
+#include <ir_Airton.h>
+#include <ir_Airwell.h>
+#include <ir_Amcor.h>
+#include <ir_Argo.h>
+#include <ir_Bosch.h>
+#include <ir_Carrier.h>
+#include <ir_Coolix.h>
+#include <ir_Corona.h>
+#include <ir_Daikin.h>
+#include <ir_Ecoclim.h>
+#include <ir_Goodweather.h>
+#include <ir_Gree.h>
+#include <ir_Kelon.h>
+#include <ir_Kelvinator.h>
+#include <ir_Lg.h>
+#include <ir_Magiquest.h>
+#include <ir_Midea.h>
+#include <ir_Mirage.h>
+#include <ir_Mitsubishi.h>
+#include <ir_Nec.h>
+#include <ir_Neoclima.h>
+#include <ir_Panasonic.h>
+#include <ir_Rhoss.h>
+#include <ir_Samsung.h>
+#include <ir_Sanyo.h>
+#include <ir_Sharp.h>
+#include <ir_Tcl.h>
+#include <ir_Teco.h>
+#include <ir_Transcold.h>
+#include <ir_Trotec.h>
+#include <ir_Truma.h>
+#include <ir_Voltas.h>
+#include <ir_York.h>
+
+IRCoolixAC coolixAC(kIrLedPin);
+IRGoodweatherAc goodweatherAC(kIrLedPin);
+IRMitsubishiAC mitsubishiAC(kIrLedPin);
+IRTcl112Ac tcl112ACS(kIrLedPin);
+IRElectraAc electraAC(kIrLedPin);
+
 /////----------------//////
 // Handle TCL112 AC commands
 void handleTCL112(const Command& ac) {
@@ -10,19 +51,19 @@ void handleTCL112(const Command& ac) {
     else if (ac.fanSpeed.equalsIgnoreCase("med"))  tcl112ACS.setFan(kTcl112AcFanMed);
     else if (ac.fanSpeed.equalsIgnoreCase("low"))  tcl112ACS.setFan(kTcl112AcFanLow);
     else if (ac.fanSpeed.equalsIgnoreCase("auto")) tcl112ACS.setFan(kTcl112AcFanAuto);
-    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+    else DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
 
     if      (ac.mode.equalsIgnoreCase("cool")) tcl112ACS.setMode(kTcl112AcCool);
     else if (ac.mode.equalsIgnoreCase("fan"))  tcl112ACS.setMode(kTcl112AcFan);
     // else if (ac.mode.equalsIgnoreCase("auto")) tcl112ACS.setMode(kTcl112AcAuto);
-    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+    else DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
     } else {
     tcl112ACS.off();
     }
 
     delay(100);
     tcl112ACS.send();
-    Serial.println("✅ TCL112 AC command sent.");
+    DEBUG_PRINTLN("✅ TCL112 AC command sent.");
 }
 
 /////--------Handle Coolix AC--------//////
@@ -35,18 +76,18 @@ void handleCoolix(const Command& ac) {
     else if (ac.fanSpeed.equalsIgnoreCase("med"))  coolixAC.setFan(kCoolixFanMed);
     else if (ac.fanSpeed.equalsIgnoreCase("low"))  coolixAC.setFan(kCoolixFanMin);
     else if (ac.fanSpeed.equalsIgnoreCase("auto")) coolixAC.setFan(kCoolixFanAuto);
-    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+    else DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
 
     if      (ac.mode.equalsIgnoreCase("cool")) coolixAC.setMode(kCoolixCool);
     else if (ac.mode.equalsIgnoreCase("fan"))  coolixAC.setMode(kCoolixFan);
-    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+    else DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
     } else {
     coolixAC.off();
     }
 
     delay(100);
     coolixAC.send();
-    Serial.println("✅ Coolix AC command sent.");
+    DEBUG_PRINTLN("✅ Coolix AC command sent.");
 }
 
 /////--------Handle Goodweather AC--------//////
@@ -59,18 +100,18 @@ void handleGoodweather(const Command& ac) {
     else if (ac.fanSpeed.equalsIgnoreCase("med"))  goodweatherAC.setFan(kGoodweatherFanMed);
     else if (ac.fanSpeed.equalsIgnoreCase("low"))  goodweatherAC.setFan(kGoodweatherFanLow);
     else if (ac.fanSpeed.equalsIgnoreCase("auto")) goodweatherAC.setFan(kGoodweatherFanAuto);
-    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+    else DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
 
     if      (ac.mode.equalsIgnoreCase("cool")) goodweatherAC.setMode(kGoodweatherCool);
     else if (ac.mode.equalsIgnoreCase("fan"))  goodweatherAC.setMode(kGoodweatherFan);
-    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+    else DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
     } else {
     goodweatherAC.off();
     }
 
     delay(100);
     goodweatherAC.send();
-    Serial.println("✅ Goodweather AC command sent.");
+    DEBUG_PRINTLN("✅ Goodweather AC command sent.");
 }
 
 /////--------Handle Electra AC--------//////
@@ -83,18 +124,18 @@ void handleElectra(const Command& ac) {
     else if (ac.fanSpeed.equalsIgnoreCase("med"))  electraAC.setFan(kElectraAcFanMed);
     else if (ac.fanSpeed.equalsIgnoreCase("low"))  electraAC.setFan(kElectraAcFanLow);
     else if (ac.fanSpeed.equalsIgnoreCase("auto")) electraAC.setFan(kElectraAcFanAuto);
-    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+    else DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
 
     if      (ac.mode.equalsIgnoreCase("cool")) electraAC.setMode(kElectraAcCool);
     else if (ac.mode.equalsIgnoreCase("fan"))  electraAC.setMode(kElectraAcFan);
-    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+    else DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
     } else {
     electraAC.off();
     }
 
     delay(100);
     electraAC.send();
-    Serial.println("✅ Electra AC command sent.");
+    DEBUG_PRINTLN("✅ Electra AC command sent.");
 }
 
 /////--------Handle Mitsubishi AC--------//////
@@ -107,18 +148,18 @@ void handleMitsubishi(const Command& ac) {
     else if (ac.fanSpeed.equalsIgnoreCase("med"))  mitsubishiAC.setFan(kMitsubishiAcFanAuto);
     else if (ac.fanSpeed.equalsIgnoreCase("low"))  mitsubishiAC.setFan(kMitsubishiAcFanQuiet);
     else if (ac.fanSpeed.equalsIgnoreCase("auto")) mitsubishiAC.setFan(kMitsubishiAcFanAuto);
-    else Serial.println("⚠️ Unknown fan speed: " + ac.fanSpeed);
+    else DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
 
     if      (ac.mode.equalsIgnoreCase("cool")) mitsubishiAC.setMode(kMitsubishiAcCool);
     else if (ac.mode.equalsIgnoreCase("fan"))  mitsubishiAC.setMode(kMitsubishiAcFan);
-    else Serial.println("⚠️ Unknown mode: " + ac.mode);
+    else DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
     } else {
     mitsubishiAC.off();
     }
 
     delay(100);
     mitsubishiAC.send();
-    Serial.println("✅ Mitsubishi AC command sent.");
+    DEBUG_PRINTLN("✅ Mitsubishi AC command sent.");
 }
 
 void handleCarrierAC40(const Command& ac) {
@@ -126,7 +167,7 @@ void handleCarrierAC40(const Command& ac) {
 
     if (ac.powerOn.equalsIgnoreCase("off")) {
         irsend.sendCarrierAC40(0x098100830, 40); // Power off
-        Serial.println("❄️ Carrier AC turned OFF");
+        DEBUG_PRINTLN("❄️ Carrier AC turned OFF");
         return;
     }
 
@@ -137,21 +178,21 @@ void handleCarrierAC40(const Command& ac) {
         } else if (ac.fanSpeed.equalsIgnoreCase("max")) {
             irsend.sendCarrierAC40(0x10E8900830, 40);
         } else {
-            Serial.println("⚠️ Unknown fan speed in FAN mode: " + ac.fanSpeed);
+            DEBUG_PRINTLN("⚠️ Unknown fan speed in FAN mode: " + ac.fanSpeed);
             return;
         }
-        Serial.println("❄️ Carrier AC in FAN mode");
+        DEBUG_PRINTLN("❄️ Carrier AC in FAN mode");
         return;
     }
 
   // === Cool Mode ===
     if (!ac.mode.equalsIgnoreCase("cool")) {
-        Serial.println("⚠️ Unknown mode for Carrier AC: " + ac.mode);
+        DEBUG_PRINTLN("⚠️ Unknown mode for Carrier AC: " + ac.mode);
         return;
     }
 
     if (temp < 16 || temp > 30) {
-        Serial.println("⚠️ Invalid temperature for Carrier AC (must be 16–30)");
+        DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier AC (must be 16–30)");
         return;
     }
 
@@ -175,7 +216,7 @@ void handleCarrierAC40(const Command& ac) {
     } else if (ac.fanSpeed.equalsIgnoreCase("auto")) {
         code = baseCoolAuto[idx];
     } else {
-        Serial.println("⚠️ Unknown fan speed in COOL mode: " + ac.fanSpeed);
+        DEBUG_PRINTLN("⚠️ Unknown fan speed in COOL mode: " + ac.fanSpeed);
     return;
     }
 

@@ -1,3 +1,4 @@
+#include <config.h>
 #include<handleAC.h>
 
 //---Parsing AC commands from string---
@@ -50,13 +51,13 @@ void recordForward(const String &key) {
 // Function to rebroadcast messages if this node is a repeater
 void rebroadcastIfNeeded(const String &msg_id, const String &type, const String &raw) {
   if (!isRepeater) {
-    Serial.println("ℹ️ Not a repeater, skipping rebroadcast.");
+    DEBUG_PRINTLN("ℹ️ Not a repeater, skipping rebroadcast.");
     return;
   }
 
   String key = type + ":" + msg_id;
   if (alreadyForwarded(key)) {
-    Serial.println("🔁 Already forwarded: " + key);
+    DEBUG_PRINTLN("🔁 Already forwarded: " + key);
     return;
   }
 
@@ -64,7 +65,7 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
   int i1 = raw.indexOf(',');
   int i2 = raw.indexOf(',', i1 + 1);
   if (i1 < 0 || i2 < 0) {
-    Serial.println("❌ Invalid format in rebroadcast check: " + raw);
+    DEBUG_PRINTLN("❌ Invalid format in rebroadcast check: " + raw);
     return;
   }
 
@@ -73,21 +74,21 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
 
   // Skip CMDs targeted to self
   if (type == "cmd" && receiver == nodeID) {
-    Serial.println("⏭ CMD intended for me (" + receiver + "), not rebroadcasting.");
+    DEBUG_PRINTLN("⏭ CMD intended for me (" + receiver + "), not rebroadcasting.");
     return;
   }
 
 // Skip self-originated messages
   if (sender == nodeID) {
-    Serial.println("⏭ Message originated by me (" + sender + "), not rebroadcasting.");
+    DEBUG_PRINTLN("⏭ Message originated by me (" + sender + "), not rebroadcasting.");
     return;
   }
 
   // Random short delay to avoid ESP-NOW collision
-  delay(random(10, 51));
+  delay(random(20, 71));
 
   esp_now_send(broadcastAddress, (uint8_t *)raw.c_str(), raw.length());
-  Serial.println("🔁 Re-broadcasted: " + raw);
+  DEBUG_PRINTLN("🔁 Re-broadcasted: " + raw);
   recordForward(key);
   leds[0] = CRGB::White;  // Indicate rebroadcast with blue LED
   FastLED.show();
@@ -100,12 +101,12 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
 //--------------------------//
 void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   String msg((char *)data, len);
-  Serial.println("\n📥 " + msg);
+  DEBUG_PRINTLN("\n📥 " + msg);
 
   // Validate comma count
   int commas = std::count(msg.begin(), msg.end(), ',');
   if (commas != 4) {
-    Serial.println("❌ Invalid message format,(expecting 5 fields), not rebroadcast");
+    DEBUG_PRINTLN("❌ Invalid message format,(expecting 5 fields), not rebroadcast");
     return;
   }
 
@@ -132,19 +133,19 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
   // Handle ACKs (don't process further)
   if (type == "ack") {
-    Serial.println("ℹ️ ACK received, no further processing.");
+    DEBUG_PRINTLN("ℹ️ ACK received, no further processing.");
     return;
   }
 
   // Prevent duplicate command execution
   if (msg_id == lastCmdID) {
-    Serial.println("⚠️ Duplicate CMD ignored.");
+    DEBUG_PRINTLN("⚠️ Duplicate CMD ignored.");
     return;
   }
   lastCmdID = msg_id;
 
   // Show command info
-  Serial.println("✅ CMD: " + command);
+  DEBUG_PRINTLN("✅ CMD: " + command);
 
   // === LED Actions ===
   if (command == "red")        leds[0] = CRGB::Red;
@@ -159,14 +160,14 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
   // === Try to parse command as structured AC command ===
   Command ac = parseCommand(command);
-  Serial.println("🔍 Parsed Command:");
-  Serial.println("  Power On:    " + ac.powerOn);
-  Serial.println("  Temperature: " + ac.temperature);
-  Serial.println("  Mode:        " + ac.mode);
-  Serial.println("  Fan Speed:   " + ac.fanSpeed);
-  Serial.println("  Protocol:    " + ac.protocol);
-  Serial.println("  V Swing:     " + ac.v_swing);
-  Serial.println("  H Swing:     " + ac.h_swing);
+  DEBUG_PRINTLN("🔍 Parsed Command:");
+  DEBUG_PRINTLN("  Power On:    " + ac.powerOn);
+  DEBUG_PRINTLN("  Temperature: " + ac.temperature);
+  DEBUG_PRINTLN("  Mode:        " + ac.mode);
+  DEBUG_PRINTLN("  Fan Speed:   " + ac.fanSpeed);
+  DEBUG_PRINTLN("  Protocol:    " + ac.protocol);
+  DEBUG_PRINTLN("  V Swing:     " + ac.v_swing);
+  DEBUG_PRINTLN("  H Swing:     " + ac.h_swing);
 
   // === Handle AC commands ===
   if (ac.protocol.equalsIgnoreCase("tcl112")) {
@@ -184,14 +185,14 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     handleCarrierAC40(ac);
   }
   else {
-    Serial.println("❌ Unsupported protocol: " + ac.protocol);
+    DEBUG_PRINTLN("❌ Unsupported protocol: " + ac.protocol);
   }
 
 
 
   // === Send ACK ===
   String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
-  Serial.println("📤 ACK: " + ack);
+  DEBUG_PRINTLN("📤 ACK: " + ack);
   esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
   // leds[0] = CRGB::Green;  // Indicate ACK with green LED
   // FastLED.show(); 
@@ -254,7 +255,7 @@ void loop() {
     lastHBPublishTime = now;
 
     String hb = String(nodeID) + "," + "gw" + "," + "heartbeat" + ",hb," + generateMessageID();
-    Serial.println("Heartbeat: " + hb);
+    DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
     leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
     FastLED.show();
