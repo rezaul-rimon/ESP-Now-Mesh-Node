@@ -250,7 +250,7 @@ void setup(){
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
-  FastLED.setBrightness(50); // Set initial brightness
+  FastLED.setBrightness(150); // Set initial brightness
   leds[0] = CRGB::Orange; FastLED.show();
   delay(1000); // Show orange LED for 1 second
   leds[0]=CRGB::Black; FastLED.show();

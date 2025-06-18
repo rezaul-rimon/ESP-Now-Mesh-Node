@@ -65,9 +65,9 @@ void handleTCL112(const Command& ac) {
         tcl112ACS.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high")) tcl112ACS.setFan(kTcl112AcFanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max")) tcl112ACS.setFan(kTcl112AcFanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))  tcl112ACS.setFan(kTcl112AcFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))  tcl112ACS.setFan(kTcl112AcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  tcl112ACS.setFan(kTcl112AcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto")) tcl112ACS.setFan(kTcl112AcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -118,9 +118,9 @@ void handleCoolix(const Command& ac) {
         coolixAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high")) coolixAC.setFan(kCoolixFanMax);
+        if      (ac.fanSpeed.equalsIgnoreCase("max")) coolixAC.setFan(kCoolixFanMax);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))  coolixAC.setFan(kCoolixFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))  coolixAC.setFan(kCoolixFanMin);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  coolixAC.setFan(kCoolixFanMin);
         else if (ac.fanSpeed.equalsIgnoreCase("auto")) coolixAC.setFan(kCoolixFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -171,9 +171,9 @@ void handleGoodweather(const Command& ac) {
         goodweatherAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high")) goodweatherAC.setFan(kGoodweatherFanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max")) goodweatherAC.setFan(kGoodweatherFanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))  goodweatherAC.setFan(kGoodweatherFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))  goodweatherAC.setFan(kGoodweatherFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  goodweatherAC.setFan(kGoodweatherFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto")) goodweatherAC.setFan(kGoodweatherFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -224,9 +224,9 @@ void handleElectra(const Command& ac) {
         electraAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high")) electraAC.setFan(kElectraAcFanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max")) electraAC.setFan(kElectraAcFanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))  electraAC.setFan(kElectraAcFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))  electraAC.setFan(kElectraAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  electraAC.setFan(kElectraAcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto")) electraAC.setFan(kElectraAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -277,9 +277,9 @@ void handleMitsubishi(const Command& ac) {
         mitsubishiAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  mitsubishiAC.setFan(kMitsubishiAcFanMax);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  mitsubishiAC.setFan(kMitsubishiAcFanMax);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   mitsubishiAC.setFan(kMitsubishiAcFanAuto);  // No dedicated med speed?
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   mitsubishiAC.setFan(kMitsubishiAcFanQuiet);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   mitsubishiAC.setFan(kMitsubishiAcFanQuiet);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  mitsubishiAC.setFan(kMitsubishiAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -419,9 +419,9 @@ void handleSanyo(const Command& ac) {
         sanyoAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  sanyoAC.setFan(kSanyoAcFanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  sanyoAC.setFan(kSanyoAcFanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   sanyoAC.setFan(kSanyoAcFanMedium);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   sanyoAC.setFan(kSanyoAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   sanyoAC.setFan(kSanyoAcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  sanyoAC.setFan(kSanyoAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -472,9 +472,9 @@ void handlePanasonic(const Command& ac) {
         panasonicAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  panasonicAC.setFan(kPanasonicAcFanMax);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  panasonicAC.setFan(kPanasonicAcFanMax);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   panasonicAC.setFan(kPanasonicAcFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   panasonicAC.setFan(kPanasonicAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   panasonicAC.setFan(kPanasonicAcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  panasonicAC.setFan(kPanasonicAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -524,9 +524,9 @@ void handleKelvinator(const Command& ac) {
         kelvinatorAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  kelvinatorAC.setFan(kKelvinatorFanMax);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  kelvinatorAC.setFan(kKelvinatorFanMax);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   kelvinatorAC.setFan(kKelvinatorFanAuto);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   kelvinatorAC.setFan(kKelvinatorFanMin);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   kelvinatorAC.setFan(kKelvinatorFanMin);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  kelvinatorAC.setFan(kKelvinatorFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -577,9 +577,9 @@ void handleDaikin(const Command& ac) {
         daikinAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  daikinAC.setFan(kDaikin128FanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  daikinAC.setFan(kDaikin128FanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   daikinAC.setFan(kDaikin128FanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   daikinAC.setFan(kDaikin128FanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   daikinAC.setFan(kDaikin128FanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  daikinAC.setFan(kDaikin128FanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -630,9 +630,9 @@ void handleHaier(const Command& ac) {
         haierAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  haierAC.setFan(kHaierAcFanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  haierAC.setFan(kHaierAcFanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   haierAC.setFan(kHaierAcFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   haierAC.setFan(kHaierAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   haierAC.setFan(kHaierAcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  haierAC.setFan(kHaierAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -682,9 +682,9 @@ void handleLg(const Command& ac) {
         lgAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  lgAC.setFan(kLgAcFanMax);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  lgAC.setFan(kLgAcFanMax);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   lgAC.setFan(kLgAcFanMedium);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   lgAC.setFan(kLgAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   lgAC.setFan(kLgAcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  lgAC.setFan(kLgAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -735,9 +735,9 @@ void handleGree(const Command& ac) {
         greeAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  greeAC.setFan(kGreeFanMax);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  greeAC.setFan(kGreeFanMax);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   greeAC.setFan(kGreeFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   greeAC.setFan(kGreeFanMin);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   greeAC.setFan(kGreeFanMin);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  greeAC.setFan(kGreeFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -788,9 +788,9 @@ void handleMirage(const Command& ac) {
         mirageAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  mirageAC.setFan(kMirageAcFanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  mirageAC.setFan(kMirageAcFanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   mirageAC.setFan(kMirageAcFanMed);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   mirageAC.setFan(kMirageAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   mirageAC.setFan(kMirageAcFanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  mirageAC.setFan(kMirageAcFanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
@@ -840,9 +840,9 @@ void handleCarrier64(const Command& ac) {
         carrierAC.setTemp(temp);
         }
 
-        if      (ac.fanSpeed.equalsIgnoreCase("high"))  carrierAC.setFan(kCarrierAc64FanHigh);
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  carrierAC.setFan(kCarrierAc64FanHigh);
         else if (ac.fanSpeed.equalsIgnoreCase("med"))   carrierAC.setFan(kCarrierAc64FanMedium);
-        else if (ac.fanSpeed.equalsIgnoreCase("low"))   carrierAC.setFan(kCarrierAc64FanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))   carrierAC.setFan(kCarrierAc64FanLow);
         else if (ac.fanSpeed.equalsIgnoreCase("auto"))  carrierAC.setFan(kCarrierAc64FanAuto);
         else {
         DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
