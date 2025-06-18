@@ -10,7 +10,7 @@
 #include <IRac.h>
 
 //Device Setup
-const char* nodeID = "node-00";
+const char* nodeID = "20002";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 

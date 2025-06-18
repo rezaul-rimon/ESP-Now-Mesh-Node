@@ -180,9 +180,26 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     handleMitsubishi(ac);
   } else if (ac.protocol.equalsIgnoreCase("electra")) {
     handleElectra(ac);
-  } 
-  else if (ac.protocol.equalsIgnoreCase("carrier40")) {
+  } else if (ac.protocol.equalsIgnoreCase("carrier40")) {
     handleCarrierAC40(ac);
+  } else if (ac.protocol.equalsIgnoreCase("sanyo")) {
+    handleSanyo(ac);
+  } else if (ac.protocol.equalsIgnoreCase("panasonic")) {
+    handlePanasonic(ac);
+  } else if (ac.protocol.equalsIgnoreCase("kelvinator")) {
+    handleKelvinator(ac);
+  } else if (ac.protocol.equalsIgnoreCase("daikin")) {
+    handleDaikin(ac);
+  } else if (ac.protocol.equalsIgnoreCase("haier")) {
+    handleHaier(ac);
+  } else if (ac.protocol.equalsIgnoreCase("lg")) {
+    handleLg(ac);
+  } else if (ac.protocol.equalsIgnoreCase("gree")) {
+    handleGree(ac);
+  } else if (ac.protocol.equalsIgnoreCase("mirage")) {
+    handleMirage(ac);
+  } else if (ac.protocol.equalsIgnoreCase("carrier64")) {
+    handleCarrier64(ac);
   }
   else {
     DEBUG_PRINTLN("❌ Unsupported protocol: " + ac.protocol);
