@@ -11,30 +11,33 @@
 Adafruit_SHT31 sht = Adafruit_SHT31();
 bool shtInitialized = false;
 
-
 #define LED_PIN 4
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
-const char* nodeID = "temp-05";
+const char* nodeID = "00003";
 bool isRepeater   = true;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-// unsigned long lastHBPublishTime = 0;
-// const unsigned long hbPublishInterval = 1 * 60 * 1000;
+static unsigned long lastHBPublishTime = 0;
+const unsigned long hbPublishInterval = 60000; // 60 seconds
 
 // cache recent rebroadcasts to stop loops
 std::deque<String> fwdCache;
 const size_t MAX_FWDS=20;
 
+// Check if a message has already been forwarded
 bool alreadyForwarded(const String &key) {
   return std::find(fwdCache.begin(), fwdCache.end(), key) != fwdCache.end();
 }
+
+// Record a forwarded message to prevent rebroadcasting
 void recordForward(const String &key) {
   fwdCache.push_back(key);
   if (fwdCache.size()>MAX_FWDS) fwdCache.pop_front();
 }
 
+// Function to rebroadcast messages if needed
 void rebroadcastIfNeeded(const String &msg_id, const String &type, const String &raw) {
   if (!isRepeater) {
     Serial.println("ℹ️ Not a repeater, skipping rebroadcast.");
@@ -76,13 +79,14 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
   esp_now_send(broadcastAddress, (uint8_t *)raw.c_str(), raw.length());
   Serial.println("🔁 Re-broadcasted: " + raw);
   recordForward(key);
-  leds[0] = CRGB::White;  // Indicate rebroadcast with blue LED
-  FastLED.show();
-  delay(100);  // Short delay to show the blue LED
-  leds[0] = CRGB::Black; // Turn off LED after rebroadcast  
-  FastLED.show();
+  // leds[0] = CRGB::White;  // Indicate rebroadcast with blue LED
+  // FastLED.show();
+  //delay(100);  // Short delay to show the blue LED
+  // leds[0] = CRGB::Black; // Turn off LED after rebroadcast  
+  // FastLED.show();
 }
 
+// Callback function to handle incoming ESP-NOW messages
 void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   String msg((char *)data, len);
   Serial.println("\n📥 " + msg);
@@ -109,6 +113,17 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   // 🔁 Rebroadcast any valid message (cmd, ack, tmp, etc.)
   rebroadcastIfNeeded(msg_id, type, msg);
 
+  // === LED Actions ===
+  if (command == "red")        leds[0] = CRGB::Red;
+  else if (command == "green") leds[0] = CRGB::Green;
+  else if (command == "blue")  leds[0] = CRGB::Blue;
+  else if (command == "orange")leds[0] = CRGB::Orange;
+  else if (command == "purple")leds[0] = CRGB::Purple;
+  else if (command == "yellow")leds[0] = CRGB::Yellow;
+  else if (command == "white") leds[0] = CRGB::White;
+  else if (command == "off")   leds[0] = CRGB::Black;
+  FastLED.show();
+
   // ❌ Do NOT process any command or ACK
   if (receiver == nodeID) {
     Serial.printf("ℹ️ Message is for me, but this node is a temp-hub. Ignoring command.\n");
@@ -128,7 +143,7 @@ String readTemperature() {
   }
 }
 
-
+// Setup function to initialize everything
 void setup(){
   Serial.begin(115200);
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
@@ -167,10 +182,9 @@ String generateMessageID() {
   return String(id);
 }
 
+// Main loop function
 void loop() {
-  static unsigned long lastHBPublishTime = 0;
-  const unsigned long hbPublishInterval = 60000; // 60 seconds
-
+  
   // 🔴 Handle sensor reinitialization & LED blinking if not ready
   if (!shtInitialized) {
     static unsigned long lastAttempt = 0;
@@ -221,7 +235,7 @@ void loop() {
     // 🔵 Blink blue LED briefly to show transmission
     leds[0] = CRGB::Blue;
     FastLED.show();
-    delay(100);
+    delay(250);
     leds[0] = CRGB::Black;
     FastLED.show();
   }
