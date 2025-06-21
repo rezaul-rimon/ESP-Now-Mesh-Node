@@ -90,11 +90,6 @@ void rebroadcastIfNeeded(const String &msg_id, const String &type, const String 
   esp_now_send(broadcastAddress, (uint8_t *)raw.c_str(), raw.length());
   DEBUG_PRINTLN("🔁 Re-broadcasted: " + raw);
   recordForward(key);
-  leds[0] = CRGB::White;  // Indicate rebroadcast with blue LED
-  FastLED.show();
-  delay(100);  // Short delay to show the blue LED
-  leds[0] = CRGB::Black; // Turn off LED after rebroadcast  
-  FastLED.show();
 }
 
 // Callback function to handle incoming ESP-NOW messages
@@ -157,6 +152,56 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   else if (command == "white") leds[0] = CRGB::White;
   else if (command == "off")   leds[0] = CRGB::Black;
   FastLED.show();
+  // return; // No further processing for LED commands
+
+  if (command == "repeater:on") {
+    isRepeater = true;
+    preferences.putBool("is_repeater", true);
+    DEBUG_PRINTLN("🔁 Repeater mode enabled (live update).");
+
+    String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+    DEBUG_PRINTLN("📤 ACK: " + ack);
+    esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
+
+    // 🔵 1st Blink — ACK (Blue)
+    leds[0] = CRGB::Blue;
+    FastLED.show();
+    delay(300);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+    delay(200);
+
+    // 🟢 2nd Blink — Repeater ON (Green)
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(500);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+
+  } else if (command == "repeater:off") {
+    isRepeater = false;
+    preferences.putBool("is_repeater", false);
+    DEBUG_PRINTLN("🔁 Repeater mode disabled (live update).");
+
+    String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+    DEBUG_PRINTLN("📤 ACK: " + ack);
+    esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
+
+    // 🔵 1st Blink — ACK (Blue)
+    leds[0] = CRGB::Blue;
+    FastLED.show();
+    delay(300);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+    delay(200);
+
+    // 🔴 2nd Blink — Repeater OFF (Red)
+    leds[0] = CRGB::Red;
+    FastLED.show();
+    delay(500);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
 
   // === Try to parse command as structured AC command ===
   Command ac = parseCommand(command);
@@ -211,11 +256,6 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
   DEBUG_PRINTLN("📤 ACK: " + ack);
   esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
-  // leds[0] = CRGB::Green;  // Indicate ACK with green LED
-  // FastLED.show(); 
-  // delay(100);  // Short delay to show the green LED
-  // leds[0] = CRGB::Black; // Turn off LED after ACK
-  // FastLED.show();
 }
 
 // Function to generate a unique 4-character message ID (hex)
@@ -298,9 +338,16 @@ void loop() {
   if (now - lastHBPublishTime >= hbPublishInterval) {
     lastHBPublishTime = now;
 
-    String hb = String(nodeID) + "," + "gw" + "," + "heartbeat" + ",hb," + generateMessageID();
+    String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",hb," + generateMessageID();
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+
+    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(100);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+    delay(100);
     leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
     FastLED.show();
     delay(100);  // Short delay to show the yellow LED
