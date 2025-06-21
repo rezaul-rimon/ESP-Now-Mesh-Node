@@ -15,12 +15,12 @@ bool shtInitialized = false;
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
-const char* nodeID = "00003";
-bool isRepeater   = true;
+const char* nodeID = "00012";
+bool isRepeater   = false;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 static unsigned long lastHBPublishTime = 0;
-const unsigned long hbPublishInterval = 60000; // 60 seconds
+const unsigned long hbPublishInterval = 2 * 60000; // 60 seconds
 
 // cache recent rebroadcasts to stop loops
 std::deque<String> fwdCache;
