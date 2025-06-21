@@ -4,14 +4,27 @@
 #include <FastLED.h>
 #include <deque>
 #include <algorithm>
+#include <Preferences.h>
 
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include <IRac.h>
 
+Preferences preferences;
+
+char nodeID[16];     // Global, mutable buffer
+bool isRepeater = false;
+
+#define CHANGE_DEVICE_CONFIG 0
+
+#if CHANGE_DEVICE_CONFIG
+  #define IS_REPEATER false
+  #define NODE_ID "001008"
+#endif
+
 //Device Setup
-const char* nodeID = "01001";
-bool isRepeater   = false;
+// const char* nodeID = "01001";
+// bool isRepeater   = false;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 unsigned long lastHBPublishTime = 0;
