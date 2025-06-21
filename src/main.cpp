@@ -151,8 +151,11 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   else if (command == "yellow")leds[0] = CRGB::Yellow;
   else if (command == "white") leds[0] = CRGB::White;
   else if (command == "off")   leds[0] = CRGB::Black;
+  else goto skip_led_block;  // If no LED match, go check repeater and AC
   FastLED.show();
-  // return; // No further processing for LED commands
+  return;  // ✅ Stop here if LED command matched
+
+  skip_led_block:
 
   if (command == "repeater:on") {
     isRepeater = true;
@@ -177,6 +180,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     delay(500);
     leds[0] = CRGB::Black;
     FastLED.show();
+    return;  // ✅ Stop here if repeater command matched
 
   } else if (command == "repeater:off") {
     isRepeater = false;
@@ -201,6 +205,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     delay(500);
     leds[0] = CRGB::Black;
     FastLED.show();
+    return;  // ✅ Stop here if repeater command matched
 }
 
   // === Try to parse command as structured AC command ===
@@ -247,6 +252,17 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     handleCarrier64(ac);
   }
   else {
+    leds[0] = CRGB::DeepPink;  // Indicate error with red LED
+    FastLED.show();
+    delay(200);  // Show red LED for 0.5 seconds
+    leds[0] = CRGB::Black; // Turn off LED after error
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::DeepPink;  // Indicate error with red LED
+    FastLED.show();
+    delay(200);  // Show red LED for 0.5 seconds
+    leds[0] = CRGB::Black; // Turn off LED after error
+    FastLED.show();
     DEBUG_PRINTLN("❌ Unsupported protocol: " + ac.protocol);
   }
 
@@ -344,13 +360,13 @@ void loop() {
 
     leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
     FastLED.show();
-    delay(100);  // Short delay to show the yellow LED
+    delay(200);  // Short delay to show the yellow LED
     leds[0] = CRGB::Black; // Turn off LED after heartbeat
     FastLED.show();
     delay(100);
     leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
     FastLED.show();
-    delay(100);  // Short delay to show the yellow LED
+    delay(200);  // Short delay to show the yellow LED
     leds[0] = CRGB::Black; // Turn off LED after heartbeat
     FastLED.show();
   }
