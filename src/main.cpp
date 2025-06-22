@@ -159,7 +159,12 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
   if (command == "repeater:on") {
     isRepeater = true;
+
+    // ✅ Open Preferences
+    preferences.begin("device_config", false);
     preferences.putBool("is_repeater", true);
+    preferences.end(); // ✅ Close after writing
+
     DEBUG_PRINTLN("🔁 Repeater mode enabled (live update).");
 
     String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
@@ -180,11 +185,17 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     delay(500);
     leds[0] = CRGB::Black;
     FastLED.show();
-    return;  // ✅ Stop here if repeater command matched
+
+    return;
 
   } else if (command == "repeater:off") {
     isRepeater = false;
+
+    // ✅ Open Preferences
+    preferences.begin("device_config", false);
     preferences.putBool("is_repeater", false);
+    preferences.end(); // ✅ Close after writing
+
     DEBUG_PRINTLN("🔁 Repeater mode disabled (live update).");
 
     String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
@@ -205,8 +216,9 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     delay(500);
     leds[0] = CRGB::Black;
     FastLED.show();
-    return;  // ✅ Stop here if repeater command matched
-}
+
+    return;
+  }
 
   // === Try to parse command as structured AC command ===
   Command ac = parseCommand(command);
