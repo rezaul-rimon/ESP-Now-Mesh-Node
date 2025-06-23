@@ -878,3 +878,95 @@ void handleCarrier64(const Command& ac) {
     leds[0] = CRGB::Black;
     FastLED.show();
 }
+
+// Handle Carrier AC 128 commands
+void handleCarrierAC128(const Command& ac) {
+bool validCommand = true;
+uint8_t temp = ac.temperature.toInt();
+
+// === Power OFF ===
+if (ac.powerOn.equalsIgnoreCase("off")) {
+    const uint8_t acOff[16] = {0x16, 0x12, 0x12, 0x00, 0x10, 0x10, 0x24, 0xD8, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0xC0};
+    irsend.sendCarrierAC128(acOff);
+    DEBUG_PRINTLN("❄️ Carrier128 AC turned OFF");
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+    return;
+}
+
+// === Validate Mode ===
+if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
+    DEBUG_PRINTLN("⚠️ Unknown mode for Carrier128 AC: " + ac.mode);
+    validCommand = false;
+}
+
+// === Validate Fan Speed ===
+if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
+    DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+    validCommand = false;
+}
+
+// === Validate Temperature (only in cool mode) ===
+if (ac.mode.equalsIgnoreCase("cool")) {
+    if (temp < 16 || temp > 30) {
+    DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier128 AC (must be 16–30)");
+    validCommand = false;
+    }
+}
+
+if (!validCommand) {
+    leds[0] = CRGB::HotPink;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+    return;
+}
+
+// === Mode: FAN ===
+if (ac.mode.equalsIgnoreCase("fan")) {
+    if (ac.fanSpeed.equalsIgnoreCase("auto")) {
+    const uint8_t fanAuto[16] = {0x16, 0x84, 0x15, 0x00, 0x10, 0x10, 0x24, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80};
+    irsend.sendCarrierAC128(fanAuto);
+    } else {  // max
+    const uint8_t fanMax[16] = {0x16, 0x24, 0x41, 0x00, 0x10, 0x10, 0x22, 0x80, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80};
+    irsend.sendCarrierAC128(fanMax);
+    }
+
+    DEBUG_PRINTLN("❄️ Carrier128 AC set to FAN mode");
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+    return;
+}
+
+// === Mode: COOL ===
+const uint8_t coolAuto[][16] = {
+    {0x16, 0x12, 0x09, 0x00, 0x10, 0x10, 0x16, 0x48, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 16°C
+    {0x16, 0x12, 0x09, 0x00, 0x10, 0x10, 0x17, 0xD0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 17°C
+    {0x16, 0x12, 0x10, 0x00, 0x10, 0x10, 0x18, 0x60, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}  // 18°C
+};
+
+const uint8_t coolMax[][16] = {
+    {0x16, 0x22, 0x37, 0x00, 0x10, 0x10, 0x16, 0x68, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 16°C
+    {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x17, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 17°C
+    {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x18, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}  // 18°C
+};
+
+const uint8_t (*code)[16] = ac.fanSpeed.equalsIgnoreCase("max") ? coolMax : coolAuto;
+uint8_t idx = temp - 16;
+
+irsend.sendCarrierAC128(code[idx]);
+
+Serial.printf("✅ Carrier128 AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
+leds[0] = CRGB::Green;
+FastLED.show();
+delay(200);
+leds[0] = CRGB::Black;
+FastLED.show();
+}
