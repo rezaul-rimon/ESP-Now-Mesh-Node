@@ -33,6 +33,7 @@
 #include <ir_Truma.h>
 #include <ir_Voltas.h>
 #include <ir_York.h>
+#include <ir_Vestel.h>
 
 IRTcl112Ac tcl112ACS(kIrLedPin);
 IRCoolixAC coolixAC(kIrLedPin);
@@ -48,7 +49,10 @@ IRLgAc lgAC(kIrLedPin);
 IRGreeAC greeAC(kIrLedPin);
 IRMirageAc mirageAC(kIrLedPin);
 IRCarrierAc64 carrierAC(kIrLedPin);
+IRVestelAc vestelAC(kIrLedPin);
+
 // IRYorkAc yorkAC(kIrLedPin);
+
 
 /////----------------//////
 // Handle TCL112 AC commands
@@ -310,95 +314,6 @@ void handleMitsubishi(const Command& ac) {
         leds[0] = CRGB::HotPink;
     }
 
-    FastLED.show();
-    delay(200);
-    leds[0] = CRGB::Black;
-    FastLED.show();
-}
-
-// Handle Carrier AC commands
-void handleCarrierAC40(const Command& ac) {
-    bool validCommand = true;
-    uint8_t temp = ac.temperature.toInt();
-
-    // === Power OFF ===
-    if (ac.powerOn.equalsIgnoreCase("off")) {
-        irsend.sendCarrierAC40(0x098100830, 40); // Power off
-        DEBUG_PRINTLN("❄️ Carrier AC turned OFF");
-        leds[0] = CRGB::Green;
-        FastLED.show();
-        delay(200);
-        leds[0] = CRGB::Black;
-        FastLED.show();
-        return;
-    }
-
-    // === Validate Mode ===
-    if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
-        DEBUG_PRINTLN("⚠️ Unknown mode for Carrier AC: " + ac.mode);
-        validCommand = false;
-    }
-
-    // === Validate Fan Speed ===
-    if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
-        DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
-        validCommand = false;
-    }
-
-    // === Validate Temperature ===
-    if (ac.mode.equalsIgnoreCase("cool")) {
-        if (temp < 16 || temp > 30) {
-        DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier AC (must be 16–30)");
-        validCommand = false;
-        }
-    }
-
-    // === Abort if any validation failed ===
-    if (!validCommand) {
-        leds[0] = CRGB::HotPink;
-        FastLED.show();
-        delay(200);
-        leds[0] = CRGB::Black;
-        FastLED.show();
-        return;
-    }
-
-    // === FAN Mode ===
-    if (ac.mode.equalsIgnoreCase("fan")) {
-        if (ac.fanSpeed.equalsIgnoreCase("auto")) {
-        irsend.sendCarrierAC40(0x50E8D00830, 40);
-        } else { // max
-        irsend.sendCarrierAC40(0x10E8900830, 40);
-        }
-        DEBUG_PRINTLN("❄️ Carrier AC in FAN mode");
-        leds[0] = CRGB::Green;
-        FastLED.show();
-        delay(200);
-        leds[0] = CRGB::Black;
-        FastLED.show();
-        return;
-    }
-
-    // === COOL Mode ===
-    const uint64_t baseCoolAuto[] = {
-        0x1088100830, 0x1048100830, 0x10C8100830, 0x1028100830, 0x10A8100830,
-        0x1068100830, 0x10E8100830, 0x1018100830, 0x1098100830, 0x1058100830,
-        0x10D8100830, 0x1038100830, 0x10B8100830, 0x1078100830, 0x10F8100830
-    };
-
-    const uint64_t baseCoolMax[] = {
-        0x1088900830, 0x1048900830, 0x10C8900830, 0x1028900830, 0x10A8900830,
-        0x1068900830, 0x10E8900830, 0x1018900830, 0x1098900830, 0x1058900830,
-        0x10D8900830, 0x1038900830, 0x10B8900830, 0x1078900830, 0x10F8900830
-    };
-
-    uint8_t idx = temp - 16;
-    uint64_t code = ac.fanSpeed.equalsIgnoreCase("max") ? baseCoolMax[idx] : baseCoolAuto[idx];
-
-    irsend.sendCarrierAC40(code, 40);
-    Serial.printf("✅ Carrier AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
-
-    leds[0] = CRGB::Green;
     FastLED.show();
     delay(200);
     leds[0] = CRGB::Black;
@@ -827,6 +742,61 @@ void handleMirage(const Command& ac) {
     FastLED.show();
 }
 
+/////--------Handle Vestel AC--------//////
+void handleVestel(const Command& ac) {
+    bool validCommand = true;
+
+    if (ac.powerOn.equalsIgnoreCase("on")) {
+        int temp = ac.temperature.toInt();
+        if (temp < 16 || temp > 30) {
+            DEBUG_PRINTLN("⚠️ Invalid temperature: " + String(temp));
+            validCommand = false;
+        } else {
+            vestelAC.setPower(true);
+            vestelAC.setTemp(temp);
+        }
+
+        // Fan speed
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  vestelAC.setFan(kVestelAcFanHigh);
+        else if (ac.fanSpeed.equalsIgnoreCase("med"))  vestelAC.setFan(kVestelAcFanMed);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  vestelAC.setFan(kVestelAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("auto")) vestelAC.setFan(kVestelAcFanAuto);
+        else {
+            DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+            validCommand = false;
+        }
+
+        // Mode
+        if      (ac.mode.equalsIgnoreCase("cool")) vestelAC.setMode(kVestelAcCool);
+        else if (ac.mode.equalsIgnoreCase("fan"))  vestelAC.setMode(kVestelAcFan);
+        else {
+            DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
+            validCommand = false;
+        }
+
+    } else if (ac.powerOn.equalsIgnoreCase("off")) {
+        vestelAC.setPower(false);
+    } else {
+        DEBUG_PRINTLN("⚠️ Unknown power command: " + ac.powerOn);
+        validCommand = false;
+    }
+
+    delay(100);
+
+    if (validCommand) {
+        vestelAC.send();
+        DEBUG_PRINTLN("✅ Vestel AC command sent.");
+        leds[0] = CRGB::Green;
+    } else {
+        leds[0] = CRGB::HotPink;
+    }
+
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
+
 // Handle Carrier64 AC commands
 void handleCarrier64(const Command& ac) {
     bool validCommand = true;
@@ -879,94 +849,210 @@ void handleCarrier64(const Command& ac) {
     FastLED.show();
 }
 
+// Handle Carrier AC commands
+void handleCarrierAC40(const Command& ac) {
+    bool validCommand = true;
+    uint8_t temp = ac.temperature.toInt();
+
+    // === Power OFF ===
+    if (ac.powerOn.equalsIgnoreCase("off")) {
+        irsend.sendCarrierAC40(0x098100830, 40); // Power off
+        DEBUG_PRINTLN("❄️ Carrier AC turned OFF");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === Validate Mode ===
+    if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
+        DEBUG_PRINTLN("⚠️ Unknown mode for Carrier AC: " + ac.mode);
+        validCommand = false;
+    }
+
+    // === Validate Fan Speed ===
+    if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
+        DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+        validCommand = false;
+    }
+
+    // === Validate Temperature ===
+    if (ac.mode.equalsIgnoreCase("cool")) {
+        if (temp < 16 || temp > 30) {
+        DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier AC (must be 16–30)");
+        validCommand = false;
+        }
+    }
+
+    // === Abort if any validation failed ===
+    if (!validCommand) {
+        leds[0] = CRGB::HotPink;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === FAN Mode ===
+    if (ac.mode.equalsIgnoreCase("fan")) {
+        if (ac.fanSpeed.equalsIgnoreCase("auto")) {
+        irsend.sendCarrierAC40(0x50E8D00830, 40);
+        } else { // max
+        irsend.sendCarrierAC40(0x10E8900830, 40);
+        }
+        DEBUG_PRINTLN("❄️ Carrier AC in FAN mode");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === COOL Mode ===
+    const uint64_t baseCoolAuto[] = {
+        0x1088100830, 0x1048100830, 0x10C8100830, 0x1028100830, 0x10A8100830,
+        0x1068100830, 0x10E8100830, 0x1018100830, 0x1098100830, 0x1058100830,
+        0x10D8100830, 0x1038100830, 0x10B8100830, 0x1078100830, 0x10F8100830
+    };
+
+    const uint64_t baseCoolMax[] = {
+        0x1088900830, 0x1048900830, 0x10C8900830, 0x1028900830, 0x10A8900830,
+        0x1068900830, 0x10E8900830, 0x1018900830, 0x1098900830, 0x1058900830,
+        0x10D8900830, 0x1038900830, 0x10B8900830, 0x1078900830, 0x10F8900830
+    };
+
+    uint8_t idx = temp - 16;
+    uint64_t code = ac.fanSpeed.equalsIgnoreCase("max") ? baseCoolMax[idx] : baseCoolAuto[idx];
+
+    irsend.sendCarrierAC40(code, 40);
+    Serial.printf("✅ Carrier AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
+
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
+
 // Handle Carrier AC 128 commands
 void handleCarrierAC128(const Command& ac) {
-bool validCommand = true;
-uint8_t temp = ac.temperature.toInt();
+    bool validCommand = true;
+    uint8_t temp = ac.temperature.toInt();
 
-// === Power OFF ===
-if (ac.powerOn.equalsIgnoreCase("off")) {
-    const uint8_t acOff[16] = {0x16, 0x12, 0x12, 0x00, 0x10, 0x10, 0x24, 0xD8, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0xC0};
-    irsend.sendCarrierAC128(acOff);
-    DEBUG_PRINTLN("❄️ Carrier128 AC turned OFF");
+    // === Power OFF ===
+    if (ac.powerOn.equalsIgnoreCase("off")) {
+        const uint8_t acOff[16] = {0x16, 0x12, 0x12, 0x00, 0x10, 0x10, 0x24, 0xD8, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0xC0};
+        irsend.sendCarrierAC128(acOff);
+        DEBUG_PRINTLN("❄️ Carrier128 AC turned OFF");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === Validate Mode ===
+    if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
+        DEBUG_PRINTLN("⚠️ Unknown mode for Carrier128 AC: " + ac.mode);
+        validCommand = false;
+    }
+
+    // === Validate Fan Speed ===
+    if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
+        DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+        validCommand = false;
+    }
+
+    // === Validate Temperature (only in cool mode) ===
+    if (ac.mode.equalsIgnoreCase("cool")) {
+        if (temp < 16 || temp > 30) {
+        DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier128 AC (must be 16–30)");
+        validCommand = false;
+        }
+    }
+
+    if (!validCommand) {
+        leds[0] = CRGB::HotPink;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === Mode: FAN ===
+    if (ac.mode.equalsIgnoreCase("fan")) {
+        if (ac.fanSpeed.equalsIgnoreCase("auto")) {
+        const uint8_t fanAuto[16] = {0x16, 0x84, 0x15, 0x00, 0x10, 0x10, 0x24, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80};
+        irsend.sendCarrierAC128(fanAuto);
+        } else {  // max
+        const uint8_t fanMax[16] = {0x16, 0x24, 0x41, 0x00, 0x10, 0x10, 0x22, 0x80, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80};
+        irsend.sendCarrierAC128(fanMax);
+        }
+
+        DEBUG_PRINTLN("❄️ Carrier128 AC set to FAN mode");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === Mode: COOL ===
+    const uint8_t coolAuto[][16] = {
+        {0x16, 0x12, 0x09, 0x00, 0x10, 0x10, 0x16, 0x48, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 16°C
+        {0x16, 0x12, 0x09, 0x00, 0x10, 0x10, 0x17, 0xD0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 17°C
+        {0x16, 0x12, 0x10, 0x00, 0x10, 0x10, 0x18, 0x60, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, //18
+        {0x16, 0x12, 0x10, 0x00, 0x10, 0x10, 0x19, 0x70, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, //19
+        {0x16, 0x12, 0x10, 0x00, 0x10, 0x10, 0x20, 0xF0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, //20
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x21, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 21°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x21, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 22°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x23, 0x30, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 23°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x24, 0x40, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 24°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x25, 0x50, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 25°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x26, 0x60, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 26°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x27, 0x70, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 27°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x28, 0x80, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 28°C
+        {0x16, 0x12, 0x11, 0x00, 0x10, 0x10, 0x29, 0x90, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 29°C
+        {0x16, 0x12, 0x12, 0x00, 0x10, 0x10, 0x30, 0x20, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80} //30°C
+    };
+
+    const uint8_t coolMax[][16] = {
+        {0x16, 0x22, 0x37, 0x00, 0x10, 0x10, 0x16, 0x68, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 16°C
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x17, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 17°C
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x18, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80},  // 18°C
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x19, 0x20, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 19
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x20, 0xA0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 20
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x21, 0xB0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 21
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x22, 0xC0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 22
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x23, 0xD0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 23
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x24, 0xE0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 24
+        {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x25, 0xF0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 25
+        {0x16, 0x22, 0x39, 0x00, 0x10, 0x10, 0x26, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 26
+        {0x16, 0x22, 0x39, 0x00, 0x10, 0x10, 0x27, 0x20, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 27
+        {0x16, 0x22, 0x39, 0x00, 0x10, 0x10, 0x28, 0x30, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 28
+        {0x16, 0x22, 0x39, 0x00, 0x10, 0x10, 0x29, 0x40, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 29
+        {0x16, 0x22, 0x39, 0x00, 0x10, 0x10, 0x30, 0xC0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80} // 30
+    };
+
+    const uint8_t (*code)[16] = ac.fanSpeed.equalsIgnoreCase("max") ? coolMax : coolAuto;
+    uint8_t idx = temp - 16;
+
+    irsend.sendCarrierAC128(code[idx]);
+
+    Serial.printf("✅ Carrier128 AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
     leds[0] = CRGB::Green;
     FastLED.show();
     delay(200);
     leds[0] = CRGB::Black;
     FastLED.show();
-    return;
 }
 
-// === Validate Mode ===
-if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
-    DEBUG_PRINTLN("⚠️ Unknown mode for Carrier128 AC: " + ac.mode);
-    validCommand = false;
-}
 
-// === Validate Fan Speed ===
-if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
-    DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
-    validCommand = false;
-}
 
-// === Validate Temperature (only in cool mode) ===
-if (ac.mode.equalsIgnoreCase("cool")) {
-    if (temp < 16 || temp > 30) {
-    DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier128 AC (must be 16–30)");
-    validCommand = false;
-    }
-}
-
-if (!validCommand) {
-    leds[0] = CRGB::HotPink;
-    FastLED.show();
-    delay(200);
-    leds[0] = CRGB::Black;
-    FastLED.show();
-    return;
-}
-
-// === Mode: FAN ===
-if (ac.mode.equalsIgnoreCase("fan")) {
-    if (ac.fanSpeed.equalsIgnoreCase("auto")) {
-    const uint8_t fanAuto[16] = {0x16, 0x84, 0x15, 0x00, 0x10, 0x10, 0x24, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80};
-    irsend.sendCarrierAC128(fanAuto);
-    } else {  // max
-    const uint8_t fanMax[16] = {0x16, 0x24, 0x41, 0x00, 0x10, 0x10, 0x22, 0x80, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80};
-    irsend.sendCarrierAC128(fanMax);
-    }
-
-    DEBUG_PRINTLN("❄️ Carrier128 AC set to FAN mode");
-    leds[0] = CRGB::Green;
-    FastLED.show();
-    delay(200);
-    leds[0] = CRGB::Black;
-    FastLED.show();
-    return;
-}
-
-// === Mode: COOL ===
-const uint8_t coolAuto[][16] = {
-    {0x16, 0x12, 0x09, 0x00, 0x10, 0x10, 0x16, 0x48, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 16°C
-    {0x16, 0x12, 0x09, 0x00, 0x10, 0x10, 0x17, 0xD0, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 17°C
-    {0x16, 0x12, 0x10, 0x00, 0x10, 0x10, 0x18, 0x60, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}  // 18°C
-};
-
-const uint8_t coolMax[][16] = {
-    {0x16, 0x22, 0x37, 0x00, 0x10, 0x10, 0x16, 0x68, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 16°C
-    {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x17, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}, // 17°C
-    {0x16, 0x22, 0x38, 0x00, 0x10, 0x10, 0x18, 0x10, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x80}  // 18°C
-};
-
-const uint8_t (*code)[16] = ac.fanSpeed.equalsIgnoreCase("max") ? coolMax : coolAuto;
-uint8_t idx = temp - 16;
-
-irsend.sendCarrierAC128(code[idx]);
-
-Serial.printf("✅ Carrier128 AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
-leds[0] = CRGB::Green;
-FastLED.show();
-delay(200);
-leds[0] = CRGB::Black;
-FastLED.show();
-}

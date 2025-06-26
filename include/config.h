@@ -19,7 +19,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "001008"
+  #define NODE_ID "00999"
 #endif
 
 //Device Setup
@@ -57,3 +57,4 @@ struct Command {
   String v_swing;     // optional
   String h_swing;     // optional
 };
+

@@ -260,8 +260,14 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     handleGree(ac);
   } else if (ac.protocol.equalsIgnoreCase("mirage")) {
     handleMirage(ac);
+  } else if (ac.protocol.equalsIgnoreCase("vestel")) {
+    handleVestel(ac);
   } else if (ac.protocol.equalsIgnoreCase("carrier64")) {
     handleCarrier64(ac);
+  } else if (ac.protocol.equalsIgnoreCase("carrier128")) {
+    handleCarrierAC128(ac);
+  } else if (ac.protocol.equalsIgnoreCase("carrier46")) {
+    handleCarrierAC46(ac);
   }
   else {
     leds[0] = CRGB::DeepPink;  // Indicate error with red LED
