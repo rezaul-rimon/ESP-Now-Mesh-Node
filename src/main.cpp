@@ -267,7 +267,11 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   } else if (ac.protocol.equalsIgnoreCase("carrier128")) {
     handleCarrierAC128(ac);
   } else if (ac.protocol.equalsIgnoreCase("carrier46")) {
-    handleCarrierAC46(ac);
+    // handleCarrierAC46(ac);
+  } else if (ac.protocol.equalsIgnoreCase("fujitsu")) {
+    handleFujitsu(ac);
+  } else if (ac.protocol.equalsIgnoreCase("mitsubishi112")) {
+    handleMitsubishi112(ac);
   }
   else {
     leds[0] = CRGB::DeepPink;  // Indicate error with red LED
@@ -275,7 +279,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     delay(200);  // Show red LED for 0.5 seconds
     leds[0] = CRGB::Black; // Turn off LED after error
     FastLED.show();
-    delay(100);
+    delay(200);
     leds[0] = CRGB::DeepPink;  // Indicate error with red LED
     FastLED.show();
     delay(200);  // Show red LED for 0.5 seconds
