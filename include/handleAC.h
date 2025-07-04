@@ -38,6 +38,9 @@
 #include <ir_Trotec.h>
 #include <ir_Truma.h>
 #include <ir_York.h>
+#include <ir_Vestel.h>
+#include <ir_Fujitsu.h>
+#include <ir_MitsubishiHeavy.h>
 
 IRTcl112Ac tcl112ACS(kIrLedPin);
 IRCoolixAC coolixAC(kIrLedPin);
@@ -67,6 +70,8 @@ IREcoclimAc ecoclimAC(kIrLedPin);
 IRAirtonAc airtonAC(kIrLedPin);
 IRAirwellAc airwellAC(kIrLedPin);
 
+IRFujitsuAC fujitsuAC(kIrLedPin);
+IRMitsubishi112 mitsubishi112AC(kIrLedPin);
 
 // IRYorkAc yorkAC(kIrLedPin);
 
@@ -1248,3 +1253,110 @@ void fujitsuAC120_48(const Command& ac) {
     leds[0] = CRGB::Black;
     FastLED.show();
 }
+
+/////--------Handle Fujitsu AC--------//////
+void handleFujitsu(const Command& ac) {
+    bool validCommand = true;
+
+    if (ac.powerOn.equalsIgnoreCase("on")) {
+        int temp = ac.temperature.toInt();
+        if (temp < 16 || temp > 30) {
+            DEBUG_PRINTLN("⚠️ Invalid temperature: " + String(temp));
+            validCommand = false;
+        } else {
+            fujitsuAC.on();
+            fujitsuAC.setTemp(temp);
+        }
+
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  fujitsuAC.setFanSpeed(kFujitsuAcFanHigh);
+        else if (ac.fanSpeed.equalsIgnoreCase("med"))  fujitsuAC.setFanSpeed(kFujitsuAcFanMed);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  fujitsuAC.setFanSpeed(kFujitsuAcFanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("auto")) fujitsuAC.setFanSpeed(kFujitsuAcFanAuto);
+        else {
+            DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+            validCommand = false;
+        }
+
+        if      (ac.mode.equalsIgnoreCase("cool")) fujitsuAC.setMode(kFujitsuAcModeCool);
+        else if (ac.mode.equalsIgnoreCase("fan"))  fujitsuAC.setMode(kFujitsuAcModeFan);
+        else {
+            DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
+            validCommand = false;
+        }
+
+    } else if (ac.powerOn.equalsIgnoreCase("off")) {
+        fujitsuAC.off();
+    } else {
+        DEBUG_PRINTLN("⚠️ Unknown power command: " + ac.powerOn);
+        validCommand = false;
+    }
+
+    delay(100);
+
+    if (validCommand) {
+        fujitsuAC.send();
+        DEBUG_PRINTLN("✅ Fujitsu AC command sent.");
+        leds[0] = CRGB::Green;
+    } else {
+        leds[0] = CRGB::HotPink;
+    }
+
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
+
+/////--------Handle Mitsubishi112 AC--------//////
+void handleMitsubishi112(const Command& ac) {
+    bool validCommand = true;
+
+    if (ac.powerOn.equalsIgnoreCase("on")) {
+        int temp = ac.temperature.toInt();
+        if (temp < 16 || temp > 30) {
+            DEBUG_PRINTLN("⚠️ Invalid temperature: " + String(temp));
+            validCommand = false;
+        } else {
+            mitsubishi112AC.on();
+            mitsubishi112AC.setTemp(temp);
+        }
+
+        if      (ac.fanSpeed.equalsIgnoreCase("max"))  mitsubishi112AC.setFan(kMitsubishi112FanMax);
+        else if (ac.fanSpeed.equalsIgnoreCase("med"))  mitsubishi112AC.setFan(kMitsubishi112FanMed);
+        else if (ac.fanSpeed.equalsIgnoreCase("min"))  mitsubishi112AC.setFan(kMitsubishi112FanLow);
+        else if (ac.fanSpeed.equalsIgnoreCase("auto")) mitsubishi112AC.setFan(kMitsubishi112FanQuiet);
+        else {
+            DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+            validCommand = false;
+        }
+
+        if      (ac.mode.equalsIgnoreCase("cool")) mitsubishi112AC.setMode(kMitsubishi112Cool);
+        else if (ac.mode.equalsIgnoreCase("fan"))  mitsubishi112AC.setMode(kMitsubishi112Dry);
+        else {
+            DEBUG_PRINTLN("⚠️ Unknown mode: " + ac.mode);
+            validCommand = false;
+        }
+
+    } else if (ac.powerOn.equalsIgnoreCase("off")) {
+        mitsubishi112AC.off();
+    } else {
+        DEBUG_PRINTLN("⚠️ Unknown power command: " + ac.powerOn);
+        validCommand = false;
+    }
+
+    delay(100);
+
+    if (validCommand) {
+        mitsubishi112AC.send();
+        DEBUG_PRINTLN("✅ Mitsubishi112 AC command sent.");
+        leds[0] = CRGB::Green;
+    } else {
+        leds[0] = CRGB::HotPink;
+    }
+
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
+
