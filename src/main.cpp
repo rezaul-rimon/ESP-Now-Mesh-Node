@@ -266,8 +266,10 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     handleCarrier64(ac);
   } else if (ac.protocol.equalsIgnoreCase("carrier128")) {
     handleCarrierAC128(ac);
-  } else if (ac.protocol.equalsIgnoreCase("carrier46")) {
-    handleCarrierAC46(ac);
+  } else if (ac.protocol.equalsIgnoreCase("banani46") || ac.protocol.equalsIgnoreCase("u46b")) {
+    bananiAC46(ac);
+  } else if (ac.protocol.equalsIgnoreCase("fujitsu120_48")) {
+    fujitsuAC120_48(ac);
   }
   else {
     leds[0] = CRGB::DeepPink;  // Indicate error with red LED

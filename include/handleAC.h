@@ -1,39 +1,43 @@
 // #include <config.h>
+#include <u46b.h>
+#include <fujitsu120_48.h>
 
+#include <ir_Tcl.h>
+#include <ir_Coolix.h>
+#include <ir_Goodweather.h>
+#include <ir_Mitsubishi.h>
+#include <ir_Sanyo.h>
+#include <ir_Panasonic.h>
+#include <ir_Kelvinator.h>
+#include <ir_Daikin.h>
+#include <ir_Lg.h>
+#include <ir_Gree.h>
+#include <ir_Mirage.h>
+#include <ir_Carrier.h>
+#include <ir_Vestel.h>
+
+#include <ir_Voltas.h>
+#include <ir_Samsung.h>
+#include <ir_Kelon.h>
+#include <ir_Sharp.h>
+#include <ir_Teco.h>
+#include <ir_Bosch.h>
+#include <ir_Corona.h>
+#include <ir_Midea.h>
+#include <ir_Ecoclim.h>
 #include <ir_Airton.h>
 #include <ir_Airwell.h>
+
 #include <ir_Amcor.h>
 #include <ir_Argo.h>
-#include <ir_Bosch.h>
-#include <ir_Carrier.h>
-#include <ir_Coolix.h>
-#include <ir_Corona.h>
-#include <ir_Daikin.h>
-#include <ir_Ecoclim.h>
-#include <ir_Goodweather.h>
-#include <ir_Gree.h>
-#include <ir_Kelon.h>
-#include <ir_Kelvinator.h>
-#include <ir_Lg.h>
 #include <ir_Magiquest.h>
-#include <ir_Midea.h>
-#include <ir_Mirage.h>
-#include <ir_Mitsubishi.h>
 #include <ir_Nec.h>
 #include <ir_Neoclima.h>
-#include <ir_Panasonic.h>
 #include <ir_Rhoss.h>
-#include <ir_Samsung.h>
-#include <ir_Sanyo.h>
-#include <ir_Sharp.h>
-#include <ir_Tcl.h>
-#include <ir_Teco.h>
 #include <ir_Transcold.h>
 #include <ir_Trotec.h>
 #include <ir_Truma.h>
-#include <ir_Voltas.h>
 #include <ir_York.h>
-#include <ir_Vestel.h>
 
 IRTcl112Ac tcl112ACS(kIrLedPin);
 IRCoolixAC coolixAC(kIrLedPin);
@@ -50,6 +54,19 @@ IRGreeAC greeAC(kIrLedPin);
 IRMirageAc mirageAC(kIrLedPin);
 IRCarrierAc64 carrierAC(kIrLedPin);
 IRVestelAc vestelAC(kIrLedPin);
+
+IRVoltas voltasAC(kIrLedPin);
+IRSamsungAc samsungAC(kIrLedPin);
+IRKelonAc kelonAC(kIrLedPin);
+IRSharpAc sharpAC(kIrLedPin);
+IRTecoAc tecoAC(kIrLedPin);
+IRBosch144AC boschAC(kIrLedPin);
+IRCoronaAc coronaAC(kIrLedPin);
+IRMideaAC mideaAC(kIrLedPin);
+IREcoclimAc ecoclimAC(kIrLedPin);
+IRAirtonAc airtonAC(kIrLedPin);
+IRAirwellAc airwellAC(kIrLedPin);
+
 
 // IRYorkAc yorkAC(kIrLedPin);
 
@@ -1054,5 +1071,180 @@ void handleCarrierAC128(const Command& ac) {
     FastLED.show();
 }
 
+// Handle Banani AC 46 commands
+void bananiAC46(const Command& ac) {
+    bool validCommand = true;
+    uint8_t temp = ac.temperature.toInt();
 
+    // === Power OFF ===
+    if (ac.powerOn.equalsIgnoreCase("off")) {
+        irsend.sendRaw(u46b_off, 91, 38); // Power off
+        DEBUG_PRINTLN("❄️ Carrier46 AC turned OFF");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
 
+    // === Validate Mode ===
+    if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
+        DEBUG_PRINTLN("⚠️ Unknown mode for Carrier46 AC: " + ac.mode);
+        validCommand = false;
+    }
+
+    // === Validate Fan Speed ===
+    if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
+        DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+        validCommand = false;
+    }
+
+    // === Validate Temperature ===
+    if (ac.mode.equalsIgnoreCase("cool")) {
+        if (temp < 16 || temp > 30) {
+            DEBUG_PRINTLN("⚠️ Invalid temperature for Carrier46 AC (must be 16–30)");
+            validCommand = false;
+        }
+    }
+
+    // === Abort if any validation failed ===
+    if (!validCommand) {
+        leds[0] = CRGB::HotPink;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === FAN Mode ===
+    if (ac.mode.equalsIgnoreCase("fan")) {
+        if (ac.fanSpeed.equalsIgnoreCase("auto")) {
+            irsend.sendRaw(u46b_fan_fanMax, 91, 38);
+        } else {
+            irsend.sendRaw(u46b_fan_fanMax, 91, 38);
+        }
+        DEBUG_PRINTLN("❄️ Carrier46 AC in FAN mode");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === COOL Mode ===
+    const uint16_t* baseCoolAuto[] = {
+        u46bCoolAuto16, u46bCoolAuto17, u46bCoolAuto18, u46bCoolAuto19, u46bCoolAuto20,
+        u46bCoolAuto21, u46bCoolAuto22, u46bCoolAuto23, u46bCoolAuto24, u46bCoolAuto25,
+        u46bCoolAuto26, u46bCoolAuto27, u46bCoolAuto28, u46bCoolAuto29, u46bCoolAuto30
+    };
+
+    const uint16_t* baseCoolMax[] = {
+        u46bCoolMax16, u46bCoolMax17, u46bCoolMax18, u46bCoolMax19, u46bCoolMax20,
+        u46bCoolMax21, u46bCoolMax22, u46bCoolMax23, u46bCoolMax24, u46bCoolMax25,
+        u46bCoolMax26, u46bCoolMax27, u46bCoolMax28, u46bCoolMax29, u46bCoolMax30
+    };
+
+    uint8_t idx = temp - 16;
+    const uint16_t* code = ac.fanSpeed.equalsIgnoreCase("max") ? baseCoolMax[idx] : baseCoolAuto[idx];
+
+    irsend.sendRaw(code, 91, 38);
+    Serial.printf("✅ Carrier46 AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
+
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
+
+// Handle Fujutsu120 AC commands
+void fujitsuAC120_48(const Command& ac) {
+    bool validCommand = true;
+    uint8_t temp = ac.temperature.toInt();
+
+    // === Power OFF ===
+    if (ac.powerOn.equalsIgnoreCase("off")) {
+        irsend.sendRaw(fujitsu120_off, 99, 38);
+        DEBUG_PRINTLN("🔌 Fujitsu AC turned OFF");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === Validate Mode ===
+    if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
+        DEBUG_PRINTLN("⚠️ Unknown mode for Fujitsu AC: " + ac.mode);
+        validCommand = false;
+    }
+
+    // === Validate Fan Speed ===
+    if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
+        DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+        validCommand = false;
+    }
+
+    // === Validate Temperature ===
+    if (ac.mode.equalsIgnoreCase("cool")) {
+        if (temp < 16 || temp > 30) {
+            DEBUG_PRINTLN("⚠️ Invalid temperature for Fujitsu AC (must be 16–30)");
+            validCommand = false;
+        }
+    }
+
+    // === Abort if invalid ===
+    if (!validCommand) {
+        leds[0] = CRGB::HotPink;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === FAN Mode ===
+    if (ac.mode.equalsIgnoreCase("fan")) {
+        if (ac.fanSpeed.equalsIgnoreCase("auto")) {
+            irsend.sendRaw(fujitsu_fan_auto, 243, 38);
+        } else {
+            irsend.sendRaw(fujitsu_fan_max, 243, 38);
+        }
+        DEBUG_PRINTLN("🌀 Fujitsu AC in FAN mode");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === COOL Mode ===
+    const uint16_t* baseCoolAuto[] = {
+        fujitsuCoolAuto16, fujitsuCoolAuto17, fujitsuCoolAuto18, fujitsuCoolAuto19, fujitsuCoolAuto20,
+        fujitsuCoolAuto21, fujitsuCoolAuto22, fujitsuCoolAuto23, fujitsuCoolAuto24, fujitsuCoolAuto25,
+        fujitsuCoolAuto26, fujitsuCoolAuto27, fujitsuCoolAuto28, fujitsuCoolAuto29, fujitsuCoolAuto30
+    };
+
+    const uint16_t* baseCoolMax[] = {
+        fujitsuCoolMax16, fujitsuCoolMax17, fujitsuCoolMax18, fujitsuCoolMax19, fujitsuCoolMax20,
+        fujitsuCoolMax21, fujitsuCoolMax22, fujitsuCoolMax23, fujitsuCoolMax24, fujitsuCoolMax25,
+        fujitsuCoolMax26, fujitsuCoolMax27, fujitsuCoolMax28, fujitsuCoolMax29, fujitsuCoolMax30
+    };
+
+    uint8_t idx = temp - 16;
+    const uint16_t* code = ac.fanSpeed.equalsIgnoreCase("max") ? baseCoolMax[idx] : baseCoolAuto[idx];
+
+    irsend.sendRaw(code, 243, 38);
+    Serial.printf("✅ Fujitsu AC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
+
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}
