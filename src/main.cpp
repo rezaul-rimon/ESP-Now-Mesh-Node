@@ -267,7 +267,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   } else if (ac.protocol.equalsIgnoreCase("carrier128")) {
     handleCarrierAC128(ac);
   } else if (ac.protocol.equalsIgnoreCase("banani46") || ac.protocol.equalsIgnoreCase("u46b")) {
-    // bananiAC46(ac);
+    bananiAC46(ac);
   } else if (ac.protocol.equalsIgnoreCase("fujitsu120_48")) {
     fujitsuAC120_48(ac);
   } else if (ac.protocol.equalsIgnoreCase("fujitsu")) {
