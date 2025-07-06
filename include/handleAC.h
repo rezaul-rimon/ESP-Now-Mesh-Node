@@ -1,6 +1,7 @@
 // #include <config.h>
 #include <u46b.h>
 #include <fujitsu120_48.h>
+#include <necRpt.h>
 
 #include <ir_Tcl.h>
 #include <ir_Coolix.h>
@@ -1360,3 +1361,91 @@ void handleMitsubishi112(const Command& ac) {
     FastLED.show();
 }
 
+// Handle Banasree NEC Repeat-style AC commands
+void banasreeNECRepeat(const Command& ac) {
+    bool validCommand = true;
+    uint8_t temp = ac.temperature.toInt();
+
+    // === Power OFF ===
+    if (ac.powerOn.equalsIgnoreCase("off")) {
+        irsend.sendRaw(NecRptOff, 147, 38);
+        DEBUG_PRINTLN("❄️ Banasree NEC AC turned OFF");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === Validate Mode ===
+    if (!ac.mode.equalsIgnoreCase("cool") && !ac.mode.equalsIgnoreCase("fan")) {
+        DEBUG_PRINTLN("⚠️ Unknown mode for Banasree NEC AC: " + ac.mode);
+        validCommand = false;
+    }
+
+    // === Validate Fan Speed ===
+    if (!ac.fanSpeed.equalsIgnoreCase("auto") && !ac.fanSpeed.equalsIgnoreCase("max")) {
+        DEBUG_PRINTLN("⚠️ Unknown fan speed: " + ac.fanSpeed);
+        validCommand = false;
+    }
+
+    // === Validate Temperature ===
+    if (ac.mode.equalsIgnoreCase("cool")) {
+        if (temp < 16 || temp > 30) {
+            DEBUG_PRINTLN("⚠️ Invalid temperature for Banasree NEC AC (must be 16–30)");
+            validCommand = false;
+        }
+    }
+
+    // === Abort on validation fail ===
+    if (!validCommand) {
+        leds[0] = CRGB::HotPink;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === FAN Mode ===
+    if (ac.mode.equalsIgnoreCase("fan")) {
+        if (ac.fanSpeed.equalsIgnoreCase("auto")) {
+            irsend.sendRaw(NecRptFanAuto, 147, 38);
+        } else {
+            irsend.sendRaw(NecRptFanMax, 147, 38);
+        }
+        DEBUG_PRINTLN("❄️ Banasree NEC in FAN mode");
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        delay(200);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        return;
+    }
+
+    // === COOL Mode ===
+    const uint16_t* baseCoolAuto[] = {
+        NecRptCoolA16, NecRptCoolA17, NecRptCoolA18, NecRptCoolA19, NecRptCoolA20,
+        NecRptCoolA21, NecRptCoolA22, NecRptCoolA23, NecRptCoolA24, NecRptCoolA25,
+        NecRptCoolA26, NecRptCoolA27, NecRptCoolA28, NecRptCoolA29, NecRptCoolA30
+    };
+
+    const uint16_t* baseCoolMax[] = {
+        NecRptCoolM16, NecRptCoolM17, NecRptCoolM18, NecRptCoolM19, NecRptCoolM20,
+        NecRptCoolM21, NecRptCoolM22, NecRptCoolM23, NecRptCoolM24, NecRptCoolM25,
+        NecRptCoolM26, NecRptCoolM27, NecRptCoolM28, NecRptCoolM29, NecRptCoolM30
+    };
+
+    uint8_t idx = temp - 16;
+    const uint16_t* code = ac.fanSpeed.equalsIgnoreCase("max") ? baseCoolMax[idx] : baseCoolAuto[idx];
+
+    irsend.sendRaw(code, 147, 38);
+    Serial.printf("✅ Banasree NEC Cool mode sent: Temp %d, Fan %s\n", temp, ac.fanSpeed.c_str());
+
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(200);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+}

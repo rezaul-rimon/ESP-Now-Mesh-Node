@@ -274,6 +274,8 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     handleFujitsu(ac);
   } else if (ac.protocol.equalsIgnoreCase("mitsubishi112")) {
     handleMitsubishi112(ac);
+  } else if (ac.protocol.equalsIgnoreCase("banasree") || ac.protocol.equalsIgnoreCase("necrpt")) {
+    banasreeNECRepeat(ac);
   }
   else {
     leds[0] = CRGB::DeepPink;  // Indicate error with red LED
