@@ -6,11 +6,8 @@
 #include <algorithm>
 #include <Preferences.h>
 
-#include <IRremoteESP8266.h>
-#include <IRsend.h>
-#include <IRac.h>
-
 Preferences preferences;
+bool isButtonPressed = false; // Global flag for button press state
 
 char nodeID[16];     // Global, mutable buffer
 bool isRepeater = false;
@@ -19,7 +16,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "20139"
+  #define NODE_ID "C0001"
 #endif
 
 //Device Setup
@@ -34,13 +31,6 @@ const unsigned long hbPublishInterval = 5 * 60 * 1000;
 #define DEBUG_PRINT(x)  if (DEBUG_MODE) { Serial.print(x); }
 #define DEBUG_PRINTF(x)  if (DEBUG_MODE) { Serial.printf(x); }
 #define DEBUG_PRINTLN(x) if (DEBUG_MODE) { Serial.println(x); }
-
-//Define PIN 27 for IR LED
-const uint16_t kIrLedPin = 27;
-
-const uint32_t kBaudRate = 115200;
-const uint16_t kCaptureBufferSize = 1024;
-IRsend irsend(kIrLedPin);
 
 //Status LED Pin Setup
 #define LED_PIN 4

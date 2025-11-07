@@ -1,5 +1,4 @@
 #include <config.h>
-#include<handleAC.h>
 
 //---Parsing AC commands from string---
 Command parseCommand(const String &cmdStr) {
@@ -231,68 +230,6 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   DEBUG_PRINTLN("  V Swing:     " + ac.v_swing);
   DEBUG_PRINTLN("  H Swing:     " + ac.h_swing);
 
-  // === Handle AC commands ===
-  if (ac.protocol.equalsIgnoreCase("tcl112")) {
-  handleTCL112(ac);
-  } else if (ac.protocol.equalsIgnoreCase("coolix")) {
-    handleCoolix(ac);
-  } else if (ac.protocol.equalsIgnoreCase("goodweather")) {
-    handleGoodweather(ac);
-  } else if (ac.protocol.equalsIgnoreCase("mitsubishi")) {
-    handleMitsubishi(ac);
-  } else if (ac.protocol.equalsIgnoreCase("electra")) {
-    handleElectra(ac);
-  } else if (ac.protocol.equalsIgnoreCase("carrier40")) {
-    handleCarrierAC40(ac);
-  } else if (ac.protocol.equalsIgnoreCase("sanyo")) {
-    handleSanyo(ac);
-  } else if (ac.protocol.equalsIgnoreCase("panasonic")) {
-    handlePanasonic(ac);
-  } else if (ac.protocol.equalsIgnoreCase("kelvinator")) {
-    handleKelvinator(ac);
-  } else if (ac.protocol.equalsIgnoreCase("daikin")) {
-    handleDaikin(ac);
-  } else if (ac.protocol.equalsIgnoreCase("haier")) {
-    handleHaier(ac);
-  } else if (ac.protocol.equalsIgnoreCase("lg")) {
-    handleLg(ac);
-  } else if (ac.protocol.equalsIgnoreCase("gree")) {
-    handleGree(ac);
-  } else if (ac.protocol.equalsIgnoreCase("mirage")) {
-    handleMirage(ac);
-  } else if (ac.protocol.equalsIgnoreCase("vestel")) {
-    handleVestel(ac);
-  } else if (ac.protocol.equalsIgnoreCase("carrier64")) {
-    handleCarrier64(ac);
-  } else if (ac.protocol.equalsIgnoreCase("carrier128")) {
-    handleCarrierAC128(ac);
-  } else if (ac.protocol.equalsIgnoreCase("banani46") || ac.protocol.equalsIgnoreCase("u46b")) {
-    bananiAC46(ac);
-  } else if (ac.protocol.equalsIgnoreCase("fujitsu120_48")) {
-    fujitsuAC120_48(ac);
-  } else if (ac.protocol.equalsIgnoreCase("fujitsu")) {
-    handleFujitsu(ac);
-  } else if (ac.protocol.equalsIgnoreCase("mitsubishi112")) {
-    handleMitsubishi112(ac);
-  } else if (ac.protocol.equalsIgnoreCase("banasree") || ac.protocol.equalsIgnoreCase("necrpt")) {
-    banasreeNECRepeat(ac);
-  }
-  else {
-    leds[0] = CRGB::DeepPink;  // Indicate error with red LED
-    FastLED.show();
-    delay(200);  // Show red LED for 0.5 seconds
-    leds[0] = CRGB::Black; // Turn off LED after error
-    FastLED.show();
-    delay(200);
-    leds[0] = CRGB::DeepPink;  // Indicate error with red LED
-    FastLED.show();
-    delay(200);  // Show red LED for 0.5 seconds
-    leds[0] = CRGB::Black; // Turn off LED after error
-    FastLED.show();
-    DEBUG_PRINTLN("❌ Unsupported protocol: " + ac.protocol);
-  }
-
-
 
   // === Send ACK ===
   String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
@@ -339,24 +276,6 @@ void setup(){
 
   preferences.end();
 
-  /////////////////////
-  #if defined(ESP8266)
-    Serial.begin(kBaudRate, SERIAL_8N1, SERIAL_TX_ONLY);
-    #else
-    Serial.begin(kBaudRate, SERIAL_8N1);
-    #endif
-    while (!Serial);
-    assert(irutils::lowLevelSanityCheck() == 0);
-
-  tcl112ACS.begin();
-  coolixAC.begin();
-  goodweatherAC.begin();
-  electraAC.begin();
-  mitsubishiAC.begin();
-
-  irsend.begin();
-  ////////////////////
-  
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
   FastLED.setBrightness(150); // Set initial brightness
@@ -375,12 +294,17 @@ void setup(){
 
 void loop() {
   unsigned long now = millis();
-
   // 💓 Send heartbeat every 30 seconds
-  if (now - lastHBPublishTime >= hbPublishInterval) {
+
+  if ((now - lastHBPublishTime >= hbPublishInterval) || (isButtonPressed == false && digitalRead(0) == LOW)) {
     lastHBPublishTime = now;
 
-    String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",hb," + generateMessageID();
+    if(digitalRead(0)==LOW) {
+    isButtonPressed = true;
+    }
+    
+
+    String hb = String(nodeID) + ",gw,heartbeat/Chiller:" + (isRepeater ? "1" : "0") + ",chiller_hb," + generateMessageID();
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
 
@@ -395,6 +319,10 @@ void loop() {
     delay(200);  // Short delay to show the yellow LED
     leds[0] = CRGB::Black; // Turn off LED after heartbeat
     FastLED.show();
+  }
+
+  if(digitalRead(0)==HIGH) {
+    isButtonPressed = false;
   }
 
   delay(50);  // Optional: can remove later for non-blocking loop
