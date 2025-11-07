@@ -1,6 +1,7 @@
 #include <config.h>
 
 //---Parsing AC commands from string---
+/*
 Command parseCommand(const String &cmdStr) {
   Command c;
   int start = 0, idx;
@@ -29,6 +30,7 @@ Command parseCommand(const String &cmdStr) {
   else                 c.h_swing     = last;
   return c;
 }
+*/
 
 // cache last handled CMD id to avoid dup exec
 String lastCmdID;
@@ -156,6 +158,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
   skip_led_block:
 
+  // === Repeater Mode Toggle Commands ===
   if (command == "repeater:on") {
     isRepeater = true;
 
@@ -218,21 +221,26 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
     return;
   }
+//=============================================
+
+if(command.startsWith("sw:")) {
+  handleSwitches(command);
+}
 
   // === Try to parse command as structured AC command ===
-  Command ac = parseCommand(command);
-  DEBUG_PRINTLN("🔍 Parsed Command:");
-  DEBUG_PRINTLN("  Power On:    " + ac.powerOn);
-  DEBUG_PRINTLN("  Temperature: " + ac.temperature);
-  DEBUG_PRINTLN("  Mode:        " + ac.mode);
-  DEBUG_PRINTLN("  Fan Speed:   " + ac.fanSpeed);
-  DEBUG_PRINTLN("  Protocol:    " + ac.protocol);
-  DEBUG_PRINTLN("  V Swing:     " + ac.v_swing);
-  DEBUG_PRINTLN("  H Swing:     " + ac.h_swing);
+  // Command ac = parseCommand(command);
+  // DEBUG_PRINTLN("🔍 Parsed Command:");
+  // DEBUG_PRINTLN("  Power On:    " + ac.powerOn);
+  // DEBUG_PRINTLN("  Temperature: " + ac.temperature);
+  // DEBUG_PRINTLN("  Mode:        " + ac.mode);
+  // DEBUG_PRINTLN("  Fan Speed:   " + ac.fanSpeed);
+  // DEBUG_PRINTLN("  Protocol:    " + ac.protocol);
+  // DEBUG_PRINTLN("  V Swing:     " + ac.v_swing);
+  // DEBUG_PRINTLN("  H Swing:     " + ac.h_swing);
 
 
   // === Send ACK ===
-  String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+  String ack = String(nodeID) + "," + sender + "," + command + ",smswt_ack," + msg_id;
   DEBUG_PRINTLN("📤 ACK: " + ack);
   esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 }
@@ -276,6 +284,30 @@ void setup(){
 
   preferences.end();
 
+  // Setup switch pins
+  pinMode(SW_PIN1, OUTPUT);
+  pinMode(SW_PIN2, OUTPUT);
+  pinMode(SW_PIN3, OUTPUT);
+  pinMode(SW_PIN4, OUTPUT);
+
+  // Initialize switches to OFF
+  digitalWrite(SW_PIN1, LOW);
+  digitalWrite(SW_PIN2, LOW);
+  digitalWrite(SW_PIN3, LOW);
+  digitalWrite(SW_PIN4, LOW);
+
+  // Restore switch states from Preferences
+  preferences.begin("switches", false);  // Open Preferences
+
+  digitalWrite(SW_PIN1, preferences.getBool("sw1", false)); // Default: OFF
+  digitalWrite(SW_PIN2, preferences.getBool("sw2", false));
+  digitalWrite(SW_PIN3, preferences.getBool("sw3", false));
+  digitalWrite(SW_PIN4, preferences.getBool("sw4", false));
+
+  preferences.end();
+  // End switch state restoration
+  //=====================================================
+
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
   FastLED.setBrightness(150); // Set initial brightness
@@ -304,7 +336,7 @@ void loop() {
     }
     
 
-    String hb = String(nodeID) + ",gw,heartbeat/Chiller:" + (isRepeater ? "1" : "0") + ",chiller_hb," + generateMessageID();
+    String hb = String(nodeID) + ",gw,heartbeat/R" + (isRepeater ? "1" : "0") + ",smswt_hb," + generateMessageID();
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
 
@@ -326,4 +358,203 @@ void loop() {
   }
 
   delay(50);  // Optional: can remove later for non-blocking loop
+}
+
+void handleSwitches(String message) {
+
+  preferences.begin("switches", false);  // Open Preferences storage
+
+  if (message == "sw1:1") {
+    DEBUG_PRINTLN("Switch-1: On");
+    digitalWrite(SW_PIN1, HIGH);
+    preferences.putBool("sw1", true);  // Save state
+    // char data[32];
+    // snprintf(data, sizeof(data), "%s,sw1:1", DEVICE_ID); 
+    // client.publish(mqtt_pub_topic, data);
+
+    #if Fast_LED
+      leds[0] = CRGB::Green;
+      FastLED.show();
+      vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+      leds[0] = CRGB::Black;
+      FastLED.show();
+    #endif
+    // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data))
+  } 
+  else if (message == "sw1:0") {
+      DEBUG_PRINTLN("Switch-1: Off");
+      digitalWrite(SW_PIN1, LOW);
+      preferences.putBool("sw1", false); 
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw1:0", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::DeepPink;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  }
+
+  if (message == "sw2:1") {
+      DEBUG_PRINTLN("Switch-2: On");
+      digitalWrite(SW_PIN2, HIGH);
+      preferences.putBool("sw2", true);
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw2:1", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  } 
+  else if (message == "sw2:0") {
+      DEBUG_PRINTLN("Switch-2: Off");
+      digitalWrite(SW_PIN2, LOW);
+      preferences.putBool("sw2", false);
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw2:0", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::DeepPink;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  }
+
+  if (message == "sw3:1") {
+      DEBUG_PRINTLN("Switch-3: On");
+      digitalWrite(SW_PIN3, HIGH);
+      preferences.putBool("sw3", true);
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw3:1", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  } 
+  else if (message == "sw3:0") {
+      DEBUG_PRINTLN("Switch-3: Off");
+      digitalWrite(SW_PIN3, LOW);
+      preferences.putBool("sw3", false);
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw3:0", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::DeepPink;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  }
+
+  if (message == "sw4:1") {
+      DEBUG_PRINTLN("Switch-4: On");
+      digitalWrite(SW_PIN4, HIGH);
+      preferences.putBool("sw4", true);
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw4:1", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  } 
+  else if (message == "sw4:0") {
+      DEBUG_PRINTLN("Switch-4: Off");
+      digitalWrite(SW_PIN4, LOW);
+      preferences.putBool("sw4", false);
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw4:0", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::DeepPink;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  }
+
+  //Handle All Switches Together
+  if (message == "sw1234:1") {
+      DEBUG_PRINTLN("Switch-1234: On");
+      digitalWrite(SW_PIN1, HIGH);
+      digitalWrite(SW_PIN2, HIGH);
+      digitalWrite(SW_PIN3, HIGH);
+      digitalWrite(SW_PIN4, HIGH);
+
+      preferences.putBool("sw1", true);
+      preferences.putBool("sw2", true);
+      preferences.putBool("sw3", true);
+      preferences.putBool("sw4", true);
+
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw1234:1", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::Green;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  } 
+  else if (message == "sw1234:0") {
+      DEBUG_PRINTLN("Switch-1234: Off");
+      digitalWrite(SW_PIN1, LOW);
+      digitalWrite(SW_PIN2, LOW);
+      digitalWrite(SW_PIN3, LOW);
+      digitalWrite(SW_PIN4, LOW);
+
+      preferences.putBool("sw1", false);
+      preferences.putBool("sw2", false);
+      preferences.putBool("sw3", false);
+      preferences.putBool("sw4", false);
+
+      // char data[32];
+      // snprintf(data, sizeof(data), "%s,sw1234:0", DEVICE_ID); 
+      // client.publish(mqtt_pub_topic, data);
+
+      #if Fast_LED
+        leds[0] = CRGB::DeepPink;
+        FastLED.show();
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay to indicate status
+        leds[0] = CRGB::Black;
+        FastLED.show();
+      #endif
+      // DEBUG_PRINTLN(String("Switch Status Sent to MQTT: ") + String(data));
+  }
+  preferences.end();  // Close Preferences storage
+  
 }
