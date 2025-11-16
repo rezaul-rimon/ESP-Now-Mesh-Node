@@ -223,7 +223,12 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   }
 //=============================================
 
-if(command.startsWith("sw:")) {
+if(command == "sw1:1" || command == "sw1:0" ||
+  command == "sw2:1" || command == "sw2:0" ||
+  command == "sw3:1" || command == "sw3:0" ||
+  command == "sw4:1" || command == "sw4:0" ||
+  command == "sw1234:1" || command == "sw1234:0") {
+  Serial.println("Handling switch command: " + command);
   handleSwitches(command);
 }
 
@@ -336,7 +341,7 @@ void loop() {
     }
     
 
-    String hb = String(nodeID) + ",gw,heartbeat/R" + (isRepeater ? "1" : "0") + ",smswt_hb," + generateMessageID();
+    String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",smswt_hb," + generateMessageID();
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
 
