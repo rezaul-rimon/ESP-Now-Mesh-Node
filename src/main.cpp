@@ -1,40 +1,165 @@
 #include <config.h>
 
 //---Parsing AC commands from string---
-Command parseCommand(const String &cmdStr) {
-  Command c;
-  int start = 0, idx;
-  int field = 0;
-  while ((idx = cmdStr.indexOf('/', start)) != -1 && field < 6) {
-    String part = cmdStr.substring(start, idx);
-    switch (field) {
-      case 0: c.powerOn     = part; break;
-      case 1: c.temperature = part; break;
-      case 2: c.mode        = part; break;
-      case 3: c.fanSpeed    = part; break;
-      case 4: c.protocol    = part; break;
-      case 5: c.v_swing     = part; break;
-    }
-    start = idx + 1;
-    field++;
-  }
-  // Last segment (rest of the string)
-  String last = cmdStr.substring(start);
-  if      (field == 0) c.powerOn     = last;
-  else if (field == 1) c.temperature = last;
-  else if (field == 2) c.mode        = last;
-  else if (field == 3) c.fanSpeed    = last;
-  else if (field == 4) c.protocol    = last;
-  else if (field == 5) c.v_swing     = last;
-  else                 c.h_swing     = last;
-  return c;
-}
+// Command parseCommand(const String &cmdStr) {
+//   Command c;
+//   int start = 0, idx;
+//   int field = 0;
+//   while ((idx = cmdStr.indexOf('/', start)) != -1 && field < 6) {
+//     String part = cmdStr.substring(start, idx);
+//     switch (field) {
+//       case 0: c.powerOn     = part; break;
+//       case 1: c.temperature = part; break;
+//       case 2: c.mode        = part; break;
+//       case 3: c.fanSpeed    = part; break;
+//       case 4: c.protocol    = part; break;
+//       case 5: c.v_swing     = part; break;
+//     }
+//     start = idx + 1;
+//     field++;
+//   }
+//   // Last segment (rest of the string)
+//   String last = cmdStr.substring(start);
+//   if      (field == 0) c.powerOn     = last;
+//   else if (field == 1) c.temperature = last;
+//   else if (field == 2) c.mode        = last;
+//   else if (field == 3) c.fanSpeed    = last;
+//   else if (field == 4) c.protocol    = last;
+//   else if (field == 5) c.v_swing     = last;
+//   else                 c.h_swing     = last;
+//   return c;
+// }
 
 // cache last handled CMD id to avoid dup exec
 String lastCmdID;
 // cache recent rebroadcasts to stop loops
 std::deque<String> fwdCache;
 const size_t MAX_FWDS=20;
+
+// Function to generate a unique 4-character message ID (hex)
+String generateMessageID() {
+  uint16_t randNum = esp_random() & 0xFFFF;
+  char id[5];
+  sprintf(id, "%04X", randNum);
+  return String(id);
+}
+
+// Convert address to string format (HEX 16 chars)
+String addressToString(const DeviceAddress deviceAddress) {
+  String id = "";
+  for (uint8_t i = 0; i < 8; i++) {
+    if (deviceAddress[i] < 16) id += "0";
+    id += String(deviceAddress[i], HEX);
+  }
+  id.toUpperCase();
+  return id;
+}
+
+// Function to send heartbeat message
+void SendHeartBeat() {
+  String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",c_hb," + generateMessageID();
+  DEBUG_PRINTLN("Heartbeat: " + hb);
+  esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+
+  #if(USE_FastLED)
+    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(200);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(200);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+  #endif
+}
+
+// Function to send temperature data
+void SendTemperatureData() {
+  // Placeholder for future data sending logic
+  sensors.requestTemperatures();   // Trigger conversion
+  for (int i = 0; i < sensorCount; i++) {
+    float temperature = sensors.getTempC(sensorAddress[i]);
+    String id = addressToString(sensorAddress[i]);
+    Serial.print(id);
+    Serial.print(",");
+    Serial.println(temperature);   // Print exactly as requested
+
+    String tempMsg = String(nodeID) + ",gw," + id + "/" + String(temperature, 2) + ",c_tmp," + generateMessageID();
+    DEBUG_PRINTLN("Temperature Message: " + tempMsg);
+    esp_now_send(broadcastAddress, (uint8_t *)tempMsg.c_str(), tempMsg.length());
+    delay(100); // Short delay between messages
+  }
+
+  #if(USE_FastLED)
+    leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(200);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(200);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+  #endif
+
+  Serial.println("----------------------------");
+}
+
+//Function for null check
+String safeValue(float val, uint8_t decimals = 2) {
+  if (isnan(val)){
+    if(isEspRestarted == false){
+      isEspRestarted = true;
+      ESP.restart();
+    }
+    return "nan";
+  } 
+    
+
+  char buff[16];
+  dtostrf(val, 0, decimals, buff);  
+  return String(buff);
+}
+
+//Function for Energy Data send.
+void SendEnergyData() {
+  float voltage    = pzem.voltage();
+  float current    = pzem.current();
+  float power      = pzem.power();
+  float energy     = pzem.energy();
+  float frequency  = pzem.frequency();
+  float pf         = pzem.pf();
+
+  Serial.println("PZEM Readings:");
+  Serial.printf(" Voltage: %s V\n",      safeValue(voltage, 2).c_str());
+  Serial.printf(" Current: %s A\n",      safeValue(current, 2).c_str());
+  Serial.printf(" Power:   %s W\n",      safeValue(power, 2).c_str());
+  Serial.printf(" Power Factor: %s\n",   safeValue(pf, 2).c_str());
+  Serial.printf(" Energy:  %s Wh\n",     safeValue(energy, 2).c_str());
+  Serial.printf(" Frequency: %s Hz\n",   safeValue(frequency, 0).c_str());
+  Serial.println("----------------------------\n");
+
+  String pzemMsg = String(nodeID) + ",gw," +
+                    safeValue(energy, 2)    + "/" +
+                    safeValue(voltage, 2)   + "/" +
+                    safeValue(current, 2)   + "/" +
+                    safeValue(power, 2)     + "/" +
+                    safeValue(pf, 2)        + "/" +
+                    safeValue(frequency, 0) +
+                    ",c_em," +
+                    generateMessageID();
+
+  DEBUG_PRINTLN("PZEM Data Message: " + pzemMsg);
+
+  esp_now_send(broadcastAddress, (uint8_t *)pzemMsg.c_str(), pzemMsg.length());
+}
+
+//--------------------------//
 
 // Check if a message has already been forwarded
 bool alreadyForwarded(const String &key) {
@@ -142,19 +267,21 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   DEBUG_PRINTLN("✅ CMD: " + command);
 
   // === LED Actions ===
-  if (command == "red")        leds[0] = CRGB::Red;
-  else if (command == "green") leds[0] = CRGB::Green;
-  else if (command == "blue")  leds[0] = CRGB::Blue;
-  else if (command == "orange")leds[0] = CRGB::Orange;
-  else if (command == "purple")leds[0] = CRGB::Purple;
-  else if (command == "yellow")leds[0] = CRGB::Yellow;
-  else if (command == "white") leds[0] = CRGB::White;
-  else if (command == "off")   leds[0] = CRGB::Black;
-  else goto skip_led_block;  // If no LED match, go check repeater and AC
-  FastLED.show();
-  return;  // ✅ Stop here if LED command matched
+  #if (USE_FastLED)
+    if (command == "red")        leds[0] = CRGB::Red;
+    else if (command == "green") leds[0] = CRGB::Green;
+    else if (command == "blue")  leds[0] = CRGB::Blue;
+    else if (command == "orange")leds[0] = CRGB::Orange;
+    else if (command == "purple")leds[0] = CRGB::Purple;
+    else if (command == "yellow")leds[0] = CRGB::Yellow;
+    else if (command == "white") leds[0] = CRGB::White;
+    else if (command == "off")   leds[0] = CRGB::Black;
+    else goto skip_led_block;  // If no LED match, go check repeater and AC
+    FastLED.show();
+    return;  // ✅ Stop here if LED command matched
 
-  skip_led_block:
+    skip_led_block:
+  #endif
 
   if (command == "repeater:on") {
     isRepeater = true;
@@ -166,24 +293,26 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
     DEBUG_PRINTLN("🔁 Repeater mode enabled (live update).");
 
-    String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+    String ack = String(nodeID) + "," + sender + "," + command + ",c_ack," + msg_id;
     DEBUG_PRINTLN("📤 ACK: " + ack);
     esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 
-    // 🔵 1st Blink — ACK (Blue)
-    leds[0] = CRGB::Blue;
-    FastLED.show();
-    delay(300);
-    leds[0] = CRGB::Black;
-    FastLED.show();
-    delay(200);
+    #if(USE_FastLED)
+      // 🔵 1st Blink — ACK (Blue)
+      leds[0] = CRGB::Blue;
+      FastLED.show();
+      delay(300);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+      delay(200);
 
-    // 🟢 2nd Blink — Repeater ON (Green)
-    leds[0] = CRGB::Green;
-    FastLED.show();
-    delay(500);
-    leds[0] = CRGB::Black;
-    FastLED.show();
+      // 🟢 2nd Blink — Repeater ON (Green)
+      leds[0] = CRGB::Green;
+      FastLED.show();
+      delay(500);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+    #endif
 
     return;
 
@@ -197,58 +326,84 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
     DEBUG_PRINTLN("🔁 Repeater mode disabled (live update).");
 
-    String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+    String ack = String(nodeID) + "," + sender + "," + command + ",c_ack," + msg_id;
     DEBUG_PRINTLN("📤 ACK: " + ack);
     esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 
-    // 🔵 1st Blink — ACK (Blue)
-    leds[0] = CRGB::Blue;
-    FastLED.show();
-    delay(300);
-    leds[0] = CRGB::Black;
-    FastLED.show();
-    delay(200);
+    #if(USE_FastLED)
+      // 🔵 1st Blink — ACK (Blue)
+      leds[0] = CRGB::Blue;
+      FastLED.show();
+      delay(300);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+      delay(200);
 
-    // 🔴 2nd Blink — Repeater OFF (Red)
-    leds[0] = CRGB::Red;
-    FastLED.show();
-    delay(500);
-    leds[0] = CRGB::Black;
-    FastLED.show();
+      // 🔴 2nd Blink — Repeater OFF (Red)
+      leds[0] = CRGB::Red;
+      FastLED.show();
+      delay(500);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+    #endif
 
     return;
   }
 
+  if(command == "ping") {
+    // Respond to ping command
+    DEBUG_PRINTLN("🏓 Ping received, sending data...");
+    String pong = String(nodeID) + "," + sender + "," + "available" + ",c_ack," + msg_id;
+    DEBUG_PRINTLN("📤 Pong: " + pong);
+    esp_now_send(broadcastAddress, (uint8_t *)pong.c_str(), pong.length());
+    DEBUG_PRINTLN("🏓 Data sent in response to ping.");
+    return;
+  }
+
+  if(command == "data") {
+    SendTemperatureData();
+    delay(500);
+    SendEnergyData();
+    return;
+  }
+
+  if(command == "hb") {
+    SendHeartBeat();
+    return;
+  }
+
+  if(command == "restart") {
+    DEBUG_PRINTLN("🔄 Restart command received, restarting...");
+    String restartAck = String(nodeID) + "," + sender + "," + ",restarted!," + ",c_ack," + msg_id;
+    DEBUG_PRINTLN("📤 RestartAck: " + restartAck);
+    esp_now_send(broadcastAddress, (uint8_t *)restartAck.c_str(), restartAck.length());
+    delay(500); // Give time for restartAck to be sent
+    ESP.restart();
+  }
+
   // === Try to parse command as structured AC command ===
-  Command ac = parseCommand(command);
-  DEBUG_PRINTLN("🔍 Parsed Command:");
-  DEBUG_PRINTLN("  Power On:    " + ac.powerOn);
-  DEBUG_PRINTLN("  Temperature: " + ac.temperature);
-  DEBUG_PRINTLN("  Mode:        " + ac.mode);
-  DEBUG_PRINTLN("  Fan Speed:   " + ac.fanSpeed);
-  DEBUG_PRINTLN("  Protocol:    " + ac.protocol);
-  DEBUG_PRINTLN("  V Swing:     " + ac.v_swing);
-  DEBUG_PRINTLN("  H Swing:     " + ac.h_swing);
+  // Command ac = parseCommand(command);
+  // DEBUG_PRINTLN("🔍 Parsed Command:");
+  // DEBUG_PRINTLN("  Power On:    " + ac.powerOn);
+  // DEBUG_PRINTLN("  Temperature: " + ac.temperature);
+  // DEBUG_PRINTLN("  Mode:        " + ac.mode);
+  // DEBUG_PRINTLN("  Fan Speed:   " + ac.fanSpeed);
+  // DEBUG_PRINTLN("  Protocol:    " + ac.protocol);
+  // DEBUG_PRINTLN("  V Swing:     " + ac.v_swing);
+  // DEBUG_PRINTLN("  H Swing:     " + ac.h_swing);
 
 
   // === Send ACK ===
-  String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
-  DEBUG_PRINTLN("📤 ACK: " + ack);
-  esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
+  // String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+  // DEBUG_PRINTLN("📤 ACK: " + ack);
+  // esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 }
 
-// Function to generate a unique 4-character message ID (hex)
-String generateMessageID() {
-  uint16_t randNum = esp_random() & 0xFFFF;
-  char id[5];
-  sprintf(id, "%04X", randNum);
-  return String(id);
-}
-
-
+//================= Setup & Loop =================//
 void setup(){
   Serial.begin(115200);
 
+  //Device ID Setup
   preferences.begin("device_config", false);  // Open Preferences (NVS)
   static String node_id;
   static bool is_repeater;
@@ -275,55 +430,107 @@ void setup(){
   isRepeater = is_repeater;
 
   preferences.end();
+  //✅ Close Preferences after reading
 
   WiFi.mode(WIFI_STA); WiFi.disconnect();
-  FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
-  FastLED.setBrightness(150); // Set initial brightness
-  leds[0] = CRGB::Orange; FastLED.show();
-  delay(1000); // Show orange LED for 1 second
-  leds[0]=CRGB::Black; FastLED.show();
+
+  #if(USE_FastLED)
+    FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
+    FastLED.setBrightness(150); // Set initial brightness
+    leds[0] = CRGB::Orange; FastLED.show();
+    delay(1000); // Show orange LED for 1 second
+    leds[0]=CRGB::Black; FastLED.show();
+  #endif
+
   if(esp_now_init()!=ESP_OK){ Serial.println("Init FAIL"); return; }
 
   esp_now_peer_info_t pi={};
   memcpy(pi.peer_addr,broadcastAddress,6);
-  pi.channel=0; pi.encrypt=false;
+  pi.channel=0; 
+  pi.encrypt=false;
   esp_now_add_peer(&pi);
   esp_now_register_recv_cb(onReceive);
   Serial.printf("Node %s ready, repeater=%d\n", nodeID, isRepeater);
+
+  Serial.println("----------------------------");
+  Serial.println();
+
+  //=================================================================
+
+  //=== Initialize DS18B20 Sensors ===//
+  sensors.begin();
+  Serial.println("Searching for DS18B20 sensors...");
+  sensorCount = sensors.getDeviceCount();
+
+  Serial.print("Found ");
+  Serial.print(sensorCount);
+  Serial.println(" sensor(s).");
+
+  if (sensorCount == 0) {
+    Serial.println("No sensors detected!");
+    return;
+  }
+
+  // Store addresses at startup
+  for (int i = 0; i < sensorCount; i++) {
+    if (sensors.getAddress(sensorAddress[i], i)) {
+      Serial.print("Sensor ");
+      Serial.print(i);
+      Serial.print(" Address: ");
+      Serial.println(addressToString(sensorAddress[i]));
+    } else {
+      Serial.print("Could not read address for sensor ");
+      Serial.println(i);
+    }
+  }
+  Serial.println("----------------------------");
+  Serial.println();
+  //=======================================================
+
+  //=== Initialize PZEM-004T Sensor ===//
+  Serial.println("Initializing PZEM-004T V3.0 Power Meter...");
+  Serial.print("Custom Address: ");
+  Serial.println(pzem.readAddress(), HEX);
+
+  Serial.println("----------------------------");
+  Serial.println();
 }
 
+// Main loop
 void loop() {
   unsigned long now = millis();
   // 💓 Send heartbeat every 30 seconds
 
   if ((now - lastHBPublishTime >= hbPublishInterval) || (isButtonPressed == false && digitalRead(0) == LOW)) {
-    lastHBPublishTime = now;
+    lastHBPublishTime = now; 
 
     if(digitalRead(0)==LOW) {
     isButtonPressed = true;
     }
+
+    SendHeartBeat();
+
+    // delay(500);
+    // SendTemperatureData();
+    // delay(500);
+    // SendEnergyData();
     
-
-    String hb = String(nodeID) + ",gw,heartbeat/Chiller:" + (isRepeater ? "1" : "0") + ",chiller_hb," + generateMessageID();
-    DEBUG_PRINTLN("Heartbeat: " + hb);
-    esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
-
-    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
-    FastLED.show();
-    delay(200);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
-    FastLED.show();
-    delay(100);
-    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
-    FastLED.show();
-    delay(200);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
-    FastLED.show();
   }
 
   if(digitalRead(0)==HIGH) {
     isButtonPressed = false;
   }
+  //===============================================
 
-  delay(50);  // Optional: can remove later for non-blocking loop
+
+  if(now-lastDataPublishTime >= dataPublishInterval){
+    lastDataPublishTime = now;
+
+    SendTemperatureData();
+    delay(500);
+    SendEnergyData();
+  }
+
+  delay(100);  // Optional: can remove later for non-blocking loop
 }
+
