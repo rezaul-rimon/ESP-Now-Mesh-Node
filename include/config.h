@@ -18,7 +18,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "1225102510150031"
+  #define NODE_ID "1225102510150089"
 #endif
 
 //Device Setup
