@@ -1,3 +1,8 @@
+// #define USE_DS18B20 0
+// #define USE_NTC 0
+// #define USE_PZEM004T 0
+// #define USE_FastLED 1
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <esp_now.h>
@@ -12,25 +17,37 @@
 //=============================================
 
 //PZEM-004T Setup
-#define PZEM_RX_PIN 16  // ESP32 RX (Connect to PZEM TX)
-#define PZEM_TX_PIN 17  // ESP32 TX (Connect to PZEM RX)
-
-PZEM004Tv30 pzem(Serial2, PZEM_RX_PIN, PZEM_TX_PIN);
-
-bool isEspRestarted = false;
+#ifdef USE_PZEM004T
+  #define PZEM_RX_PIN 16  // ESP32 RX (Connect to PZEM TX)
+  #define PZEM_TX_PIN 17  // ESP32 TX (Connect to PZEM RX)
+  PZEM004Tv30 pzem(Serial2, PZEM_RX_PIN, PZEM_TX_PIN);
+  bool isEspRestarted = false;
+#endif
 //=============================================
 
 // DS18B20 Setup
-#define ONE_WIRE_BUS 4      // DS18B20 Data Pin
+#ifdef USE_DS18B20
+  #define ONE_WIRE_BUS 5      // DS18B20 Data Pin
 
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
+  OneWire oneWire(ONE_WIRE_BUS);
+  DallasTemperature sensors(&oneWire);
 
-// Maximum expected sensors (safe upper limit)
-#define MAX_SENSORS 5
+  // Maximum expected sensors (safe upper limit)
+  #define MAX_SENSORS 5
 
-DeviceAddress sensorAddress[MAX_SENSORS];   // Store all sensor addresses
-int sensorCount = 0;
+  DeviceAddress sensorAddress[MAX_SENSORS];   // Store all sensor addresses
+  int sensorCount = 0;
+#endif
+//=============================================
+
+//NTC Setup
+#ifdef USE_NTC
+  #define ADC_PIN 36
+  #define SERIES_RESISTOR 10000.0   // fixed resistor 10k
+  #define NOMINAL_RESISTANCE 10000.0 // NTC value at 25°C
+  #define NOMINAL_TEMPERATURE 25.0   // 25°C
+  #define BETA 3950.0
+#endif
 //=============================================
 
 Preferences preferences;
@@ -43,7 +60,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "C0001"
+  #define NODE_ID "C0004"
 #endif
 
 //Device Setup
@@ -62,11 +79,10 @@ const unsigned long dataPublishInterval = 2 * 60 * 1000;
 #define DEBUG_PRINTF(x)  if (DEBUG_MODE) { Serial.printf(x); }
 #define DEBUG_PRINTLN(x) if (DEBUG_MODE) { Serial.println(x); }
 
-#define USE_FastLED 0 // Set to 1 to enable FastLED status LED
 
-#if (USE_FastLED)
+#ifdef USE_FastLED
   //Status LED Pin Setup
-  #define LED_PIN 5
+  #define LED_PIN 4
   #define NUM_LEDS 1
   CRGB leds[NUM_LEDS];
 #endif

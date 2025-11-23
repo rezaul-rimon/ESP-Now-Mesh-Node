@@ -61,7 +61,7 @@ void SendHeartBeat() {
   DEBUG_PRINTLN("Heartbeat: " + hb);
   esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
 
-  #if(USE_FastLED)
+  #ifdef USE_FastLED
     leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
     FastLED.show();
     delay(200);  // Short delay to show the yellow LED
@@ -75,42 +75,97 @@ void SendHeartBeat() {
     FastLED.show();
   #endif
 }
+
+//Send NTC Data
+#ifdef USE_NTC
+  void sendNTCData() {
+    // Placeholder for future NTC data sending logic
+    int adcValue = analogRead(ADC_PIN);
+
+      // Convert ADC to voltage
+      float voltage = adcValue * (3.3 / 4095.0);
+
+      // Calculate thermistor resistance
+      float resistance = SERIES_RESISTOR * ((3.3 / voltage) - 1);
+
+      // Temperature calculation using Beta formula
+      float steinhart;
+      steinhart = resistance / NOMINAL_RESISTANCE;     // (R/R0)
+      steinhart = log(steinhart);                      // ln(R/R0)
+      steinhart /= BETA;                               // 1/B * ln(R/R0)
+      steinhart += 1.0 / (NOMINAL_TEMPERATURE + 273.15); // + 1/T0
+      steinhart = 1.0 / steinhart;                     // Invert
+      float temperatureC = steinhart - 273.15;         // Kelvin → °C
+
+      // Serial.print("ADC: ");
+      // Serial.print(adcValue);
+      // Serial.print("  Voltage: ");
+      // Serial.print(voltage, 3);
+      // Serial.print(" V  Temp: ");
+      // Serial.print(temperatureC, 2);
+      // Serial.println(" °C");
+
+      String ntcMsg = String(nodeID) + ",gw,NTC/" + String(temperatureC, 2) + ",c_tmp," + generateMessageID();
+      DEBUG_PRINTLN("NTC Temperature Message: " + ntcMsg);
+      esp_now_send(broadcastAddress, (uint8_t *)ntcMsg.c_str(), ntcMsg.length());
+
+      #ifdef USE_FastLED
+        leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+        FastLED.show();
+        delay(200);  // Short delay to show the yellow LED
+        leds[0] = CRGB::Black; // Turn off LED after heartbeat
+        FastLED.show();
+        delay(100);
+        leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
+        FastLED.show();
+        delay(200);  // Short delay to show the yellow LED
+        leds[0] = CRGB::Black; // Turn off LED after heartbeat
+        FastLED.show();
+      #endif
+  }
+#endif
+//==========================//
 
 // Function to send temperature data
-void SendTemperatureData() {
-  // Placeholder for future data sending logic
-  sensors.requestTemperatures();   // Trigger conversion
-  for (int i = 0; i < sensorCount; i++) {
-    float temperature = sensors.getTempC(sensorAddress[i]);
-    String id = addressToString(sensorAddress[i]);
-    Serial.print(id);
-    Serial.print(",");
-    Serial.println(temperature);   // Print exactly as requested
+#ifdef USE_DS18B20
+  void SendTemperatureData() {
+    // Placeholder for future data sending logic
+    sensors.requestTemperatures();   // Trigger conversion
+    for (int i = 0; i < sensorCount; i++) {
+      float temperature = sensors.getTempC(sensorAddress[i]);
+      String id = addressToString(sensorAddress[i]);
+      Serial.print(id);
+      Serial.print(",");
+      Serial.println(temperature);   // Print exactly as requested
 
-    String tempMsg = String(nodeID) + ",gw," + id + "/" + String(temperature, 2) + ",c_tmp," + generateMessageID();
-    DEBUG_PRINTLN("Temperature Message: " + tempMsg);
-    esp_now_send(broadcastAddress, (uint8_t *)tempMsg.c_str(), tempMsg.length());
-    delay(100); // Short delay between messages
+      String tempMsg = String(nodeID) + ",gw," + id + "/" + String(temperature, 2) + ",c_tmp," + generateMessageID();
+      DEBUG_PRINTLN("Temperature Message: " + tempMsg);
+      esp_now_send(broadcastAddress, (uint8_t *)tempMsg.c_str(), tempMsg.length());
+      delay(100); // Short delay between messages
+    }
+
+    #ifdef USE_FastLED
+      leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+      FastLED.show();
+      delay(200);  // Short delay to show the yellow LED
+      leds[0] = CRGB::Black; // Turn off LED after heartbeat
+      FastLED.show();
+      delay(100);
+      leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
+      FastLED.show();
+      delay(200);  // Short delay to show the yellow LED
+      leds[0] = CRGB::Black; // Turn off LED after heartbeat
+      FastLED.show();
+    #endif
+
+    Serial.println("----------------------------");
   }
 
-  #if(USE_FastLED)
-    leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
-    FastLED.show();
-    delay(200);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
-    FastLED.show();
-    delay(100);
-    leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
-    FastLED.show();
-    delay(200);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
-    FastLED.show();
-  #endif
-
-  Serial.println("----------------------------");
-}
+#endif
+//===================================================//
 
 //Function for null check
+#ifdef USE_PZEM004T
 String safeValue(float val, uint8_t decimals = 2) {
   if (isnan(val)){
     if(isEspRestarted == false){
@@ -157,8 +212,22 @@ void SendEnergyData() {
   DEBUG_PRINTLN("PZEM Data Message: " + pzemMsg);
 
   esp_now_send(broadcastAddress, (uint8_t *)pzemMsg.c_str(), pzemMsg.length());
-}
 
+  #ifdef USE_FastLED
+    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(200);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::Green;  // Indicate heartbeat with yellow LED
+    FastLED.show();
+    delay(200);  // Short delay to show the yellow LED
+    leds[0] = CRGB::Black; // Turn off LED after heartbeat
+    FastLED.show();
+  #endif
+}
+#endif
 //--------------------------//
 
 // Check if a message has already been forwarded
@@ -267,7 +336,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   DEBUG_PRINTLN("✅ CMD: " + command);
 
   // === LED Actions ===
-  #if (USE_FastLED)
+  #ifdef USE_FastLED
     if (command == "red")        leds[0] = CRGB::Red;
     else if (command == "green") leds[0] = CRGB::Green;
     else if (command == "blue")  leds[0] = CRGB::Blue;
@@ -297,7 +366,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     DEBUG_PRINTLN("📤 ACK: " + ack);
     esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 
-    #if(USE_FastLED)
+    #ifdef USE_FastLED
       // 🔵 1st Blink — ACK (Blue)
       leds[0] = CRGB::Blue;
       FastLED.show();
@@ -330,7 +399,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     DEBUG_PRINTLN("📤 ACK: " + ack);
     esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 
-    #if(USE_FastLED)
+    #ifdef USE_FastLED
       // 🔵 1st Blink — ACK (Blue)
       leds[0] = CRGB::Blue;
       FastLED.show();
@@ -357,26 +426,52 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     DEBUG_PRINTLN("📤 Pong: " + pong);
     esp_now_send(broadcastAddress, (uint8_t *)pong.c_str(), pong.length());
     DEBUG_PRINTLN("🏓 Data sent in response to ping.");
+
     return;
   }
 
   if(command == "data") {
-    SendTemperatureData();
-    delay(500);
-    SendEnergyData();
+
+    // Send all sensor data
+    #ifdef USE_DS18B20
+      SendTemperatureData();
+      delay(500);
+    #endif
+
+    // Send PZEM-004T data
+    #ifdef USE_PZEM004T
+      SendEnergyData();
+      delay(500);
+    #endif
+
+    // Send NTC data
+    #ifdef USE_NTC
+      sendNTCData();
+    #endif
+
     return;
   }
 
   if(command == "hb") {
+    // Send Heartbeat
     SendHeartBeat();
     return;
+
   }
 
   if(command == "restart") {
     DEBUG_PRINTLN("🔄 Restart command received, restarting...");
     String restartAck = String(nodeID) + "," + sender + "," + ",restarted!," + ",c_ack," + msg_id;
     DEBUG_PRINTLN("📤 RestartAck: " + restartAck);
-    esp_now_send(broadcastAddress, (uint8_t *)restartAck.c_str(), restartAck.length());
+    esp_now_send(broadcastAddress, (uint8_t *)restartAck.c_str(), restartAck.length());\
+
+    #ifdef USE_FastLED
+      leds[0] = CRGB::Red;  // Indicate restart with purple LED
+      FastLED.show();
+      delay(500);  // Short delay to show the purple LED
+      leds[0] = CRGB::Black; // Turn off LED after restart indication
+      FastLED.show();
+    #endif
     delay(500); // Give time for restartAck to be sent
     ESP.restart();
   }
@@ -434,7 +529,7 @@ void setup(){
 
   WiFi.mode(WIFI_STA); WiFi.disconnect();
 
-  #if(USE_FastLED)
+  #ifdef USE_FastLED
     FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
     FastLED.setBrightness(150); // Set initial brightness
     leds[0] = CRGB::Orange; FastLED.show();
@@ -458,39 +553,43 @@ void setup(){
   //=================================================================
 
   //=== Initialize DS18B20 Sensors ===//
-  sensors.begin();
-  Serial.println("Searching for DS18B20 sensors...");
-  sensorCount = sensors.getDeviceCount();
+  #ifdef USE_DS18B20
+    sensors.begin();
+    Serial.println("Searching for DS18B20 sensors...");
+    sensorCount = sensors.getDeviceCount();
 
-  Serial.print("Found ");
-  Serial.print(sensorCount);
-  Serial.println(" sensor(s).");
+    Serial.print("Found ");
+    Serial.print(sensorCount);
+    Serial.println(" sensor(s).");
 
-  if (sensorCount == 0) {
-    Serial.println("No sensors detected!");
-    return;
-  }
-
-  // Store addresses at startup
-  for (int i = 0; i < sensorCount; i++) {
-    if (sensors.getAddress(sensorAddress[i], i)) {
-      Serial.print("Sensor ");
-      Serial.print(i);
-      Serial.print(" Address: ");
-      Serial.println(addressToString(sensorAddress[i]));
-    } else {
-      Serial.print("Could not read address for sensor ");
-      Serial.println(i);
+    if (sensorCount == 0) {
+      Serial.println("No sensors detected!");
+      return;
     }
-  }
-  Serial.println("----------------------------");
-  Serial.println();
+
+    // Store addresses at startup
+    for (int i = 0; i < sensorCount; i++) {
+      if (sensors.getAddress(sensorAddress[i], i)) {
+        Serial.print("Sensor ");
+        Serial.print(i);
+        Serial.print(" Address: ");
+        Serial.println(addressToString(sensorAddress[i]));
+      } else {
+        Serial.print("Could not read address for sensor ");
+        Serial.println(i);
+      }
+    }
+    Serial.println("----------------------------");
+    Serial.println();
+  #endif
   //=======================================================
 
   //=== Initialize PZEM-004T Sensor ===//
-  Serial.println("Initializing PZEM-004T V3.0 Power Meter...");
-  Serial.print("Custom Address: ");
-  Serial.println(pzem.readAddress(), HEX);
+  #ifdef USE_PZEM004T
+    Serial.println("Initializing PZEM-004T V3.0 Power Meter...");
+    Serial.print("Custom Address: ");
+    Serial.println(pzem.readAddress(), HEX);
+  #endif
 
   Serial.println("----------------------------");
   Serial.println();
@@ -507,14 +606,7 @@ void loop() {
     if(digitalRead(0)==LOW) {
     isButtonPressed = true;
     }
-
     SendHeartBeat();
-
-    // delay(500);
-    // SendTemperatureData();
-    // delay(500);
-    // SendEnergyData();
-    
   }
 
   if(digitalRead(0)==HIGH) {
@@ -526,9 +618,19 @@ void loop() {
   if(now-lastDataPublishTime >= dataPublishInterval){
     lastDataPublishTime = now;
 
-    SendTemperatureData();
-    delay(500);
-    SendEnergyData();
+    #ifdef USE_DS18B20
+      SendTemperatureData();
+      delay(500);
+    #endif
+
+    #ifdef USE_PZEM004T
+      SendEnergyData();
+      delay(500);
+    #endif
+
+    #ifdef USE_NTC
+      sendNTCData();
+    #endif
   }
 
   delay(100);  // Optional: can remove later for non-blocking loop
