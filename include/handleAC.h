@@ -700,6 +700,8 @@ void handleGree(const Command& ac) {
 
     if (validCommand) {
         greeAC.send();
+        delay(500);
+        greeAC.send();
         DEBUG_PRINTLN("✅ Gree AC command sent.");
         leds[0] = CRGB::Green;
     } else {

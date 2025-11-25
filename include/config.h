@@ -14,6 +14,7 @@ Preferences preferences;
 
 char nodeID[16];     // Global, mutable buffer
 bool isRepeater = false;
+bool isButtonPressed = false;
 
 #define CHANGE_DEVICE_CONFIG 0
 

@@ -377,9 +377,13 @@ void loop() {
   unsigned long now = millis();
 
   // 💓 Send heartbeat every 30 seconds
-  if (now - lastHBPublishTime >= hbPublishInterval) {
+  if ((now - lastHBPublishTime >= hbPublishInterval) || (isButtonPressed == false && digitalRead(0) == LOW)) {
     lastHBPublishTime = now;
 
+    if(digitalRead(0)==LOW) {
+    isButtonPressed = true;
+    }
+    
     String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",hb," + generateMessageID();
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
@@ -395,7 +399,12 @@ void loop() {
     delay(200);  // Short delay to show the yellow LED
     leds[0] = CRGB::Black; // Turn off LED after heartbeat
     FastLED.show();
+
   }
 
-  delay(50);  // Optional: can remove later for non-blocking loop
+  if(digitalRead(0)==HIGH) {
+    isButtonPressed = false;
+  }
+
+  delay(50);  // Optional: can remove later for non-blocking loop
 }
