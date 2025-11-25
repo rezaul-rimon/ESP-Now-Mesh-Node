@@ -19,7 +19,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "20131"
+  #define NODE_ID "20306"
 #endif
 
 //Device Setup
@@ -28,7 +28,7 @@ bool isRepeater = false;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 unsigned long lastHBPublishTime = 0;
-const unsigned long hbPublishInterval = 1 * 60 * 1000;
+const unsigned long hbPublishInterval = 5 * 60 * 1000;
 
 #define DEBUG_MODE true
 #define DEBUG_PRINT(x)  if (DEBUG_MODE) { Serial.print(x); }
