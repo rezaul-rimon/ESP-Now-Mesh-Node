@@ -20,7 +20,7 @@ bool isButtonPressed = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "20139"
+  #define NODE_ID "20399"
 #endif
 
 //Device Setup

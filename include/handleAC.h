@@ -76,7 +76,6 @@ IRMitsubishi112 mitsubishi112AC(kIrLedPin);
 
 // IRYorkAc yorkAC(kIrLedPin);
 
-
 /////----------------//////
 // Handle TCL112 AC commands
 void handleTCL112(const Command& ac) {
@@ -227,6 +226,9 @@ void handleGoodweather(const Command& ac) {
         goodweatherAC.send();
         DEBUG_PRINTLN("✅ Goodweather AC command sent.");
         leds[0] = CRGB::Green;
+
+        // saveLastCommand(ac);   // <-- NEW
+        // DEBUG_PRINTLN("💾 Last Gree AC command saved.");
     } else {
         leds[0] = CRGB::HotPink;
     }
@@ -700,9 +702,18 @@ void handleGree(const Command& ac) {
 
     if (validCommand) {
         greeAC.send();
-        delay(500);
+        DEBUG_PRINTLN("✅ Gree AC command sent 1st Time.");
+
+        leds[0] = CRGB::GhostWhite;
+        FastLED.show();
+        delay(250);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        delay(1750);
+
         greeAC.send();
-        DEBUG_PRINTLN("✅ Gree AC command sent.");
+
+        DEBUG_PRINTLN("✅ Gree AC command sent 2nd Time.");
         leds[0] = CRGB::Green;
     } else {
         leds[0] = CRGB::HotPink;

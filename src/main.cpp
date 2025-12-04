@@ -1,6 +1,20 @@
 #include <config.h>
 #include<handleAC.h>
 
+//=====================================
+void saveLastCommand(const Command& ac) {
+    preferences.begin("lastACState", false);
+    preferences.putString("power", ac.powerOn);
+    preferences.putString("temp", ac.temperature);
+    preferences.putString("mode", ac.mode);
+    preferences.putString("fan", ac.fanSpeed);
+    preferences.putString("protocol", ac.protocol);
+    preferences.putBool("valid", true);
+    delay(10);
+    preferences.end();
+}
+//=====================================
+
 //---Parsing AC commands from string---
 Command parseCommand(const String &cmdStr) {
   Command c;
@@ -292,7 +306,31 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     DEBUG_PRINTLN("❌ Unsupported protocol: " + ac.protocol);
   }
 
+  //==============================================================
+  // First, check protocol
+  if (ac.protocol.equalsIgnoreCase("gree")) {
+    Serial.println("✅ Protocol is Gree. Saving last AC command...");
+    saveLastCommand(ac);   // <-- NEW
+    DEBUG_PRINTLN("💾 Last Gree AC command saved.");
+  }
+  else{
+    // Protocol is not Gree → check and clear Preferences
+    Preferences preferences;
+    preferences.begin("lastACState", false);
 
+    // Check if the namespace has saved data (we check one key we know exists)
+    bool hasData = preferences.isKey("protocol");
+
+    if (hasData) {
+      Serial.println("⚠️ Protocol is not Gree and preferences exist. Clearing lastACState...");
+      preferences.clear();  // clears all keys in this namespace
+    } else {
+      Serial.println("ℹ️ No saved data in lastACState. Nothing to clear.");
+    }
+
+    preferences.end();
+  }
+  //==============================================================
 
   // === Send ACK ===
   String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
@@ -307,6 +345,49 @@ String generateMessageID() {
   sprintf(id, "%04X", randNum);
   return String(id);
 }
+
+// Function to save the last Gree AC command to Preferences
+void restoreLastGreeCommand() {
+  preferences.begin("lastACState", false);
+  if (!preferences.getBool("valid", false)) {
+    DEBUG_PRINTLN("⛔ No previous AC command stored.");
+    return;
+  }
+
+  Command ac;
+  ac.powerOn   = preferences.getString("power", "off");
+  ac.temperature = preferences.getString("temp", "24");
+  ac.mode      = preferences.getString("mode", "cool");
+  ac.fanSpeed  = preferences.getString("fan", "auto");
+  ac.protocol  = preferences.getString("protocol", "gree");
+
+  preferences.end();
+
+  DEBUG_PRINTLN("♻️ Restored last AC state...");
+  
+  if(ac.protocol == "gree") {
+    leds[0] = CRGB::Purple; 
+    FastLED.show();
+    delay(500); // Show purple LED for 1 second 
+    leds[0]=CRGB::Black;
+    delay(2000);
+    FastLED.show();
+    handleGree(ac);
+  }
+  // else if(ac.protocol == "goodweather") {
+  //   leds[0] = CRGB::Purple; 
+  //   FastLED.show();
+  //   delay(500); // Show purple LED for 1 second 
+  //   leds[0]=CRGB::Black;
+  //   delay(2000);
+  //   FastLED.show();
+  //   handleGoodweather(ac);
+  // }
+  else {
+    DEBUG_PRINTLN("❌ Last stored command is not for Gree AC.");
+  }
+}
+
 
 
 void setup(){
@@ -371,6 +452,9 @@ void setup(){
   esp_now_add_peer(&pi);
   esp_now_register_recv_cb(onReceive);
   Serial.printf("Node %s ready, repeater=%d\n", nodeID, isRepeater);
+
+  delay(500);
+  restoreLastGreeCommand();
 }
 
 void loop() {
