@@ -427,6 +427,14 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     esp_now_send(broadcastAddress, (uint8_t *)pong.c_str(), pong.length());
     DEBUG_PRINTLN("🏓 Data sent in response to ping.");
 
+    #ifdef USE_FastLED
+      leds[0] = CRGB::Green;  // Indicate ping response with green LED
+      FastLED.show();
+      delay(250);  // Short delay to show the green LED
+      leds[0] = CRGB::Black; // Turn off LED after ping response
+      FastLED.show(); 
+    #endif
+
     return;
   }
 

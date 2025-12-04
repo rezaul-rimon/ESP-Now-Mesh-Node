@@ -1,7 +1,7 @@
-// #define USE_DS18B20 0
-// #define USE_NTC 0
-// #define USE_PZEM004T 0
-// #define USE_FastLED 1
+#define USE_DS18B20
+// #define USE_NTC
+// #define USE_PZEM004T
+#define USE_FastLED
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -27,7 +27,7 @@
 
 // DS18B20 Setup
 #ifdef USE_DS18B20
-  #define ONE_WIRE_BUS 5      // DS18B20 Data Pin
+  #define ONE_WIRE_BUS 21      // DS18B20 Data Pin
 
   OneWire oneWire(ONE_WIRE_BUS);
   DallasTemperature sensors(&oneWire);
@@ -60,7 +60,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "C0004"
+  #define NODE_ID "C0006"
 #endif
 
 //Device Setup
