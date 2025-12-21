@@ -23,6 +23,18 @@ bool isButtonPressed = false;
   #define NODE_ID "20399"
 #endif
 
+/* ================= NTC CONFIG ================= */
+#define ADC_PIN            32        // GPIO36 (ADC1_CH0)
+#define ADC_MAX            4095.0
+#define VREF               3.3        // ESP32 ADC reference
+#define SERIES_RESISTOR    10000.0    // 10k fixed resistor
+#define NOMINAL_RESISTANCE 10000.0    // 10k NTC @ 25C
+#define NOMINAL_TEMP       25.0       // °C
+#define B_COEFFICIENT      3950.0
+#define SAMPLE_COUNT       20         // ADC averaging
+#define OFFSET_TEMPERATURE  4.5f        // Calibration offset
+/* =============================================== */
+
 //Device Setup
 // const char* nodeID = "01001";
 // bool isRepeater   = false;

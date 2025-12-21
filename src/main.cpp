@@ -388,6 +388,34 @@ void restoreLastGreeCommand() {
   }
 }
 
+float readNtcTemperatureC() {
+  uint32_t adcSum = 0;
+
+  for (int i = 0; i < SAMPLE_COUNT; i++) {
+      adcSum += analogRead(ADC_PIN);
+      delay(5);
+  }
+
+  float adcAvg = adcSum / (float)SAMPLE_COUNT;
+
+  // Convert ADC to voltage
+  float voltage = (adcAvg / ADC_MAX) * VREF;
+
+  // Calculate NTC resistance
+  float resistance = SERIES_RESISTOR * ((VREF / voltage) - 1.0);
+
+  // Steinhart-Hart (Beta formula)
+  float steinhart;
+  steinhart = resistance / NOMINAL_RESISTANCE;     // (R/Ro)
+  steinhart = log(steinhart);                       // ln(R/Ro)
+  steinhart /= B_COEFFICIENT;                       // 1/B * ln(R/Ro)
+  steinhart += 1.0 / (NOMINAL_TEMP + 273.15);       // + (1/To)
+  steinhart = 1.0 / steinhart;                      // Invert
+  steinhart -= 273.15;                              // K → °C
+
+  return steinhart + OFFSET_TEMPERATURE;
+}
+
 
 
 void setup(){
@@ -420,7 +448,7 @@ void setup(){
 
   preferences.end();
 
-  /////////////////////
+  //=============================================================
   #if defined(ESP8266)
     Serial.begin(kBaudRate, SERIAL_8N1, SERIAL_TX_ONLY);
     #else
@@ -436,7 +464,12 @@ void setup(){
   mitsubishiAC.begin();
 
   irsend.begin();
-  ////////////////////
+  //=============================================================
+  
+  // NTC ADC Setup
+  analogReadResolution(12);
+  analogSetAttenuation(ADC_11db);   // Required for 0–3.3V
+  //=============================================================
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   FastLED.addLeds<NEOPIXEL,LED_PIN>(leds,NUM_LEDS);
@@ -467,8 +500,17 @@ void loop() {
     if(digitalRead(0)==LOW) {
     isButtonPressed = true;
     }
+
+    float temperature = readNtcTemperatureC();
     
-    String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",hb," + generateMessageID();
+    String hb = String(nodeID) +
+            ",gw," +
+            String(temperature, 2) +
+            "/R:" +
+            (isRepeater ? "1" : "0") +
+            ",hb," +
+            generateMessageID();
+            
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
 
