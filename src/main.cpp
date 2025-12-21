@@ -356,7 +356,7 @@ void restoreLastGreeCommand() {
 
   Command ac;
   ac.powerOn   = preferences.getString("power", "off");
-  ac.temperature = preferences.getString("temp", "24");
+  ac.temperature = preferences.getString("temp", "25");
   ac.mode      = preferences.getString("mode", "cool");
   ac.fanSpeed  = preferences.getString("fan", "auto");
   ac.protocol  = preferences.getString("protocol", "gree");
@@ -453,7 +453,7 @@ void setup(){
   esp_now_register_recv_cb(onReceive);
   Serial.printf("Node %s ready, repeater=%d\n", nodeID, isRepeater);
 
-  delay(500);
+  delay(5000);
   restoreLastGreeCommand();
 }
 

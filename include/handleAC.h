@@ -672,6 +672,17 @@ void handleGree(const Command& ac) {
         validCommand = false;
         } else {
         greeAC.on();
+
+        greeAC.send();
+        DEBUG_PRINTLN("✅ Gree AC command sent 1st Time.");
+
+        leds[0] = CRGB::GhostWhite;
+        FastLED.show();
+        delay(500);
+        leds[0] = CRGB::Black;
+        FastLED.show();
+        delay(5000);
+
         greeAC.setTemp(temp);
         }
 
@@ -701,15 +712,15 @@ void handleGree(const Command& ac) {
     delay(100);
 
     if (validCommand) {
-        greeAC.send();
-        DEBUG_PRINTLN("✅ Gree AC command sent 1st Time.");
+        // greeAC.send();
+        // DEBUG_PRINTLN("✅ Gree AC command sent 1st Time.");
 
-        leds[0] = CRGB::GhostWhite;
-        FastLED.show();
-        delay(250);
-        leds[0] = CRGB::Black;
-        FastLED.show();
-        delay(1750);
+        // leds[0] = CRGB::GhostWhite;
+        // FastLED.show();
+        // delay(500);
+        // leds[0] = CRGB::Black;
+        // FastLED.show();
+        // delay(10000);
 
         greeAC.send();
 
