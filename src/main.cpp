@@ -388,33 +388,35 @@ void restoreLastGreeCommand() {
   }
 }
 
-float readNtcTemperatureC() {
-  uint32_t adcSum = 0;
+#if defined(USE_NTC)
+  float readNtcTemperatureC() {
+    uint32_t adcSum = 0;
 
-  for (int i = 0; i < SAMPLE_COUNT; i++) {
-      adcSum += analogRead(ADC_PIN);
-      delay(5);
+    for (int i = 0; i < SAMPLE_COUNT; i++) {
+        adcSum += analogRead(ADC_PIN);
+        delay(5);
+    }
+
+    float adcAvg = adcSum / (float)SAMPLE_COUNT;
+
+    // Convert ADC to voltage
+    float voltage = (adcAvg / ADC_MAX) * VREF;
+
+    // Calculate NTC resistance
+    float resistance = SERIES_RESISTOR * ((VREF / voltage) - 1.0);
+
+    // Steinhart-Hart (Beta formula)
+    float steinhart;
+    steinhart = resistance / NOMINAL_RESISTANCE;     // (R/Ro)
+    steinhart = log(steinhart);                       // ln(R/Ro)
+    steinhart /= B_COEFFICIENT;                       // 1/B * ln(R/Ro)
+    steinhart += 1.0 / (NOMINAL_TEMP + 273.15);       // + (1/To)
+    steinhart = 1.0 / steinhart;                      // Invert
+    steinhart -= 273.15;                              // K → °C
+
+    return steinhart + OFFSET_TEMPERATURE;
   }
-
-  float adcAvg = adcSum / (float)SAMPLE_COUNT;
-
-  // Convert ADC to voltage
-  float voltage = (adcAvg / ADC_MAX) * VREF;
-
-  // Calculate NTC resistance
-  float resistance = SERIES_RESISTOR * ((VREF / voltage) - 1.0);
-
-  // Steinhart-Hart (Beta formula)
-  float steinhart;
-  steinhart = resistance / NOMINAL_RESISTANCE;     // (R/Ro)
-  steinhart = log(steinhart);                       // ln(R/Ro)
-  steinhart /= B_COEFFICIENT;                       // 1/B * ln(R/Ro)
-  steinhart += 1.0 / (NOMINAL_TEMP + 273.15);       // + (1/To)
-  steinhart = 1.0 / steinhart;                      // Invert
-  steinhart -= 273.15;                              // K → °C
-
-  return steinhart + OFFSET_TEMPERATURE;
-}
+#endif
 
 
 
@@ -467,8 +469,10 @@ void setup(){
   //=============================================================
   
   // NTC ADC Setup
-  analogReadResolution(12);
-  analogSetAttenuation(ADC_11db);   // Required for 0–3.3V
+  #if defined(USE_NTC)
+    analogReadResolution(12);
+    analogSetAttenuation(ADC_11db);   // Required for 0–3.3V
+  #endif
   //=============================================================
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
@@ -501,6 +505,7 @@ void loop() {
     isButtonPressed = true;
     }
 
+    #if defined(USE_NTC)
     float temperature = readNtcTemperatureC();
     
     String hb = String(nodeID) +
@@ -510,7 +515,14 @@ void loop() {
             (isRepeater ? "1" : "0") +
             ",hb," +
             generateMessageID();
-            
+    #else
+    String hb = String(nodeID) +
+            ",gw,heartbeat/R:" +
+            (isRepeater ? "1" : "0") +
+            ",hb," +
+            generateMessageID();
+    #endif
+
     DEBUG_PRINTLN("Heartbeat: " + hb);
     esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
 
