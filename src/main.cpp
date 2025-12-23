@@ -1,30 +1,4 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <esp_now.h>
-#include <FastLED.h>
-#include <deque>
-#include <algorithm>
-
-#include <Wire.h>
-#include "Adafruit_SHT31.h"
-
-Adafruit_SHT31 sht = Adafruit_SHT31();
-bool shtInitialized = false;
-
-#define LED_PIN 4
-#define NUM_LEDS 1
-CRGB leds[NUM_LEDS];
-
-const char* nodeID = "00012";
-bool isRepeater   = false;
-uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-
-static unsigned long lastHBPublishTime = 0;
-const unsigned long hbPublishInterval = 2 * 60000; // 60 seconds
-
-// cache recent rebroadcasts to stop loops
-std::deque<String> fwdCache;
-const size_t MAX_FWDS=20;
+#include <config.h>
 
 // Check if a message has already been forwarded
 bool alreadyForwarded(const String &key) {
@@ -130,18 +104,33 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   }
 }
 
-String readTemperature() {
-  if (!shtInitialized) return "NA/NA";
+#if defined(USE_SHT3X)
+  String readTemperature() {
+    if (!shtInitialized) return "NA/NA";
 
-  float temp = sht.readTemperature();
-  float hum  = sht.readHumidity();
+    float temp = sht.readTemperature();
+    float hum  = sht.readHumidity();
 
-  if (!isnan(temp) && !isnan(hum)) {
-    return String(temp, 2) + "/" + String(hum, 2);
-  } else {
-    return "ERR/ERR";
+    if (!isnan(temp) && !isnan(hum)) {
+      return String(temp, 2) + "/" + String(hum, 2);
+    } else {
+      return "ERR/ERR";
+    }
   }
-}
+#endif
+
+#if defined(USE_DS18B20)
+  // Convert address to string format (HEX 16 chars)
+  String addressToString(const DeviceAddress deviceAddress) {
+      String id = "";
+      for (uint8_t i = 0; i < 8; i++) {
+          if (deviceAddress[i] < 16) id += "0";
+          id += String(deviceAddress[i], HEX);
+      }
+      id.toUpperCase();
+      return id;
+  }
+#endif
 
 // Setup function to initialize everything
 void setup(){
@@ -153,15 +142,63 @@ void setup(){
   leds[0]=CRGB::Black; FastLED.show();
 
   // First attempt
-  if (sht.begin(0x44)) {
-    shtInitialized = true;
-    Serial.println("✅ SHT3x sensor initialized.");
-    leds[0] = CRGB::Green; FastLED.show();
-    delay(1000);
-    leds[0] = CRGB::Black; FastLED.show();
-  } else {
-    Serial.println("⏳ SHT3x not found, will retry in loop.");
-  }
+  #if defined(USE_SHT3X)
+    if (sht.begin(0x44)) {
+      shtInitialized = true;
+      Serial.println("✅ SHT3x sensor initialized.");
+      leds[0] = CRGB::Green; FastLED.show();
+      delay(1000);
+      leds[0] = CRGB::Black; FastLED.show();
+    } else {
+      Serial.println("⏳ SHT3x not found, will retry in loop.");
+    }
+  #endif
+
+  //USE DS18B20
+  #if defined(USE_DS18B20)
+    sensors.begin();
+    Serial.println("Searching for DS18B20 sensors...");
+    sensorCount = sensors.getDeviceCount();
+
+    Serial.print("Found ");
+    Serial.print(sensorCount);
+    Serial.println(" sensor(s).");
+
+    // if (sensorCount == 0) {
+    //     Serial.println("No sensors detected!");
+    //     return;
+    // }
+
+    while(sensorCount == 0) {
+      Serial.println("No sensors detected!");
+      leds[0] = CRGB::Red;
+      FastLED.show();
+      delay(500);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+      delay(500);
+    }
+
+    // Store addresses at startup
+    for (int i = 0; i < sensorCount; i++) {
+        if (sensors.getAddress(sensorAddress[i], i)) {
+          Serial.print("Sensor ");
+          Serial.print(i);
+          Serial.print(" Address: ");
+          Serial.println(addressToString(sensorAddress[i]));
+
+          leds[0] = CRGB::Green; 
+          FastLED.show();
+          delay(300);
+          leds[0] = CRGB::Black; 
+          FastLED.show();
+          delay(200);
+        } else {
+          Serial.print("Could not read address for sensor ");
+          Serial.println(i);
+        }
+    }
+  #endif
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   
@@ -186,54 +223,79 @@ String generateMessageID() {
 void loop() {
   
   // 🔴 Handle sensor reinitialization & LED blinking if not ready
-  if (!shtInitialized) {
-    static unsigned long lastAttempt = 0;
-    static unsigned long lastBlink = 0;
-    static bool ledOn = false;
+  #if defined(USE_SHT3X)
+    if (!shtInitialized) {
+      static unsigned long lastAttempt = 0;
+      static unsigned long lastBlink = 0;
+      static bool ledOn = false;
 
-    // 🔄 Retry sensor init every 10 seconds
-    if (millis() - lastAttempt > 10000) {
-      Serial.println("🔄 Retrying SHT3x init...");
-      if (sht.begin(0x44)) {
-        shtInitialized = true;
-        Serial.println("✅ SHT3x initialized during loop.");
-        leds[0] = CRGB::Green;
-        FastLED.show();
-        delay(1000);
-        leds[0] = CRGB::Black;
+      // 🔄 Retry sensor init every 10 seconds
+      if (millis() - lastAttempt > 10000) {
+        Serial.println("🔄 Retrying SHT3x init...");
+        if (sht.begin(0x44)) {
+          shtInitialized = true;
+          Serial.println("✅ SHT3x initialized during loop.");
+          leds[0] = CRGB::Green;
+          FastLED.show();
+          delay(1000);
+          leds[0] = CRGB::Black;
+          FastLED.show();
+        }
+        lastAttempt = millis();
+      }
+
+      // 🔴 Blink red LED every 500ms
+      if (millis() - lastBlink > 500) {
+        lastBlink = millis();
+        ledOn = !ledOn;
+        leds[0] = ledOn ? CRGB::Red : CRGB::Black;
         FastLED.show();
       }
-      lastAttempt = millis();
     }
-
-    // 🔴 Blink red LED every 500ms
-    if (millis() - lastBlink > 500) {
-      lastBlink = millis();
-      ledOn = !ledOn;
-      leds[0] = ledOn ? CRGB::Red : CRGB::Black;
-      FastLED.show();
-    }
-  }
+  #endif
 
   // 📤 Send sensor data (or error) every 30 seconds
   unsigned long now = millis();
   if (now - lastHBPublishTime >= hbPublishInterval) {
     lastHBPublishTime = now;
 
-    String tempHum;
-    if (shtInitialized) {
-      tempHum = readTemperature();  // Returns "25.66/66.58" or similar
-    } else {
-      tempHum = "Error/Error";
-    }
+    #if defined(USE_SHT3X)
+      String tempHum;
+      if (shtInitialized) {
+        tempHum = readTemperature();  // Returns "25.66/66.58" or similar
+      } else {
+        tempHum = "Error/Error";
+      }
+      String msg = String(nodeID) + ",gw," + tempHum + ",tmp," + generateMessageID();
 
-    String msg = String(nodeID) + ",gw," + tempHum + ",tmp," + generateMessageID();
+      Serial.println("📤 Sending Temp: " + msg);
+      esp_now_send(broadcastAddress, (uint8_t *)msg.c_str(), msg.length());
+    #endif
 
-    Serial.println("📤 Sending Temp: " + msg);
-    esp_now_send(broadcastAddress, (uint8_t *)msg.c_str(), msg.length());
+    #if defined(USE_DS18B20)
+      sensors.requestTemperatures();   // Trigger conversion
+
+      for (int i = 0; i < sensorCount; i++) {
+        float temperature = sensors.getTempC(sensorAddress[i]);
+
+        String id = addressToString(sensorAddress[i]);
+
+        Serial.print(id);
+        Serial.print(",");
+        Serial.println(temperature);   // Print exactly as requested
+
+        delay(100); // Small delay between readings
+
+        String msg = String(nodeID) + ",gw," + String(temperature, 2) + "/55.55" ",tmp," + generateMessageID();
+
+        Serial.println("📤 Sending Temp: " + msg);
+        esp_now_send(broadcastAddress, (uint8_t *)msg.c_str(), msg.length());
+        delay(250);  // Small delay between sends
+      }
+    #endif
 
     // 🔵 Blink blue LED briefly to show transmission
-    leds[0] = CRGB::Blue;
+    leds[0] = CRGB::Green;
     FastLED.show();
     delay(250);
     leds[0] = CRGB::Black;
