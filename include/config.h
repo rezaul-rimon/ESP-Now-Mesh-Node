@@ -18,7 +18,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "1225102510150089"
+  #define NODE_ID "1225001"
 #endif
 
 //Device Setup
@@ -44,10 +44,15 @@ const unsigned long hbPublishInterval = 5 * 60 * 1000;
 #endif
 
 //Switch Pins Setup
-#define SW_PIN1 25  
-#define SW_PIN2 26  
-#define SW_PIN3 27 
-#define SW_PIN4 14
+// #define SW_PIN1 25  
+// #define SW_PIN2 26  
+// #define SW_PIN3 27 
+// #define SW_PIN4 14
+
+#define SW_PIN1 14  
+#define SW_PIN2 27  
+#define SW_PIN3 26 
+#define SW_PIN4 25
 
 //Structure for Parsing AC Command
 // struct Command {
