@@ -1,5 +1,7 @@
 #include <config.h>
-
+void PublishSwitchStatus();
+void PublishHeartbeat();
+String generateMessageID();
 //---Parsing AC commands from string---
 /*
 Command parseCommand(const String &cmdStr) {
@@ -122,7 +124,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   rebroadcastIfNeeded(msg_id, type, msg);
 
   // Check if message is intended for this node
-  if (receiver != nodeID) {
+  if ((receiver != nodeID) && (receiver != MasterID)) {
     Serial.printf("⏭ Not my message (receiver: %s)\n", receiver.c_str());
     return;
   }
@@ -223,6 +225,18 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   }
 //=============================================
 
+if(command == "hb"){
+  Serial.println("Handling heartbeat command: " + command);
+  PublishHeartbeat();
+  return;
+}
+else if (command == "ping" || command == "status") {
+  Serial.println("Handling status command: " + command);
+  PublishSwitchStatus();
+  return;
+}
+
+//==============================================
 if(command == "sw1:1" || command == "sw1:0" ||
   command == "sw2:1" || command == "sw2:0" ||
   command == "sw3:1" || command == "sw3:0" ||
@@ -232,6 +246,9 @@ if(command == "sw1:1" || command == "sw1:0" ||
   handleSwitches(command);
 }
 
+// Serial.println("Finished handling switch command.");
+// Serial.println("------------------------------");
+// Serial.println();
   // === Try to parse command as structured AC command ===
   // Command ac = parseCommand(command);
   // DEBUG_PRINTLN("🔍 Parsed Command:");
@@ -245,6 +262,13 @@ if(command == "sw1:1" || command == "sw1:0" ||
 
 
   // === Send ACK ===
+  // Serial.println("Sending ACK back to sender...");
+
+  if(receiver == MasterID){
+    msg_id = generateMessageID();
+  }
+
+  delay(random(20, 201));
   String ack = String(nodeID) + "," + sender + "," + command + ",smswt_ack," + msg_id;
   DEBUG_PRINTLN("📤 ACK: " + ack);
   esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
@@ -258,6 +282,69 @@ String generateMessageID() {
   return String(id);
 }
 
+void PublishHeartbeat() {
+  preferences.begin("switches", false);  // Open Preferences storage
+  bool sw1State = preferences.getBool("sw1", false);
+  bool sw2State = preferences.getBool("sw2", false);
+  bool sw3State = preferences.getBool("sw3", false);
+  bool sw4State = preferences.getBool("sw4", false);
+  preferences.end();
+
+  String hb = String(nodeID) +
+    ",gw,heartbeat/R:" +
+    (isRepeater ? "1" : "0") +
+    ",smswt_hb," +
+    generateMessageID();
+
+  DEBUG_PRINTLN("Heartbeat: " + hb);
+  esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+
+  leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+  FastLED.show();
+  delay(200);  // Short delay to show the yellow LED
+  leds[0] = CRGB::Black; // Turn off LED after heartbeat
+  FastLED.show();
+  delay(100);
+  leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+  FastLED.show();
+  delay(200);  // Short delay to show the yellow LED
+  leds[0] = CRGB::Black; // Turn off LED after heartbeat
+  FastLED.show();
+}
+
+void PublishSwitchStatus(){
+  preferences.begin("switches", false);  // Open Preferences storage
+  bool sw1State = preferences.getBool("sw1", false);
+  bool sw2State = preferences.getBool("sw2", false);
+  bool sw3State = preferences.getBool("sw3", false);
+  bool sw4State = preferences.getBool("sw4", false);
+  preferences.end();
+
+  String hb = String(nodeID) +
+    ",gw,R:" +
+    (isRepeater ? "1" : "0") +
+    "/sw1:" + (sw1State ? "1" : "0") +
+    "/sw2:" + (sw2State ? "1" : "0") +
+    "/sw3:" + (sw3State ? "1" : "0") +
+    "/sw4:" + (sw4State ? "1" : "0") +
+    ",smswt_hb," +
+    generateMessageID();
+
+  DEBUG_PRINTLN("Heartbeat: " + hb);
+  esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+
+  leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+  FastLED.show();
+  delay(200);  // Short delay to show the yellow LED
+  leds[0] = CRGB::Black; // Turn off LED after heartbeat
+  FastLED.show();
+  delay(100);
+  leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
+  FastLED.show();
+  delay(200);  // Short delay to show the yellow LED
+  leds[0] = CRGB::Black; // Turn off LED after heartbeat
+  FastLED.show();
+}
 
 void setup(){
   Serial.begin(115200);
@@ -339,23 +426,12 @@ void loop() {
     if(digitalRead(0)==LOW) {
     isButtonPressed = true;
     }
-    
 
-    String hb = String(nodeID) + ",gw,heartbeat/R:" + (isRepeater ? "1" : "0") + ",smswt_hb," + generateMessageID();
-    DEBUG_PRINTLN("Heartbeat: " + hb);
-    esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+    //==============================================//
 
-    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
-    FastLED.show();
-    delay(200);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
-    FastLED.show();
-    delay(100);
-    leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
-    FastLED.show();
-    delay(200);  // Short delay to show the yellow LED
-    leds[0] = CRGB::Black; // Turn off LED after heartbeat
-    FastLED.show();
+    PublishHeartbeat();
+
+    //====================================================//
   }
 
   if(digitalRead(0)==HIGH) {
