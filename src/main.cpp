@@ -225,30 +225,30 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   }
 //=============================================
 
-if(command == "hb"){
-  Serial.println("Handling heartbeat command: " + command);
-  PublishHeartbeat();
-  return;
-}
-else if (command == "ping" || command == "status") {
-  Serial.println("Handling status command: " + command);
-  PublishSwitchStatus();
-  return;
-}
+  if(command == "hb"){
+    Serial.println("Handling heartbeat command: " + command);
+    PublishHeartbeat();
+    return;
+  }
+  else if (command == "ping" || command == "status") {
+    Serial.println("Handling status command: " + command);
+    PublishSwitchStatus();
+    return;
+  }
 
-//==============================================
-if(command == "sw1:1" || command == "sw1:0" ||
-  command == "sw2:1" || command == "sw2:0" ||
-  command == "sw3:1" || command == "sw3:0" ||
-  command == "sw4:1" || command == "sw4:0" ||
-  command == "sw1234:1" || command == "sw1234:0") {
-  Serial.println("Handling switch command: " + command);
-  handleSwitches(command);
-}
+  //==============================================
+  if(command == "sw1:1" || command == "sw1:0" ||
+    command == "sw2:1" || command == "sw2:0" ||
+    command == "sw3:1" || command == "sw3:0" ||
+    command == "sw4:1" || command == "sw4:0" ||
+    command == "sw1234:1" || command == "sw1234:0") {
+    Serial.println("Handling switch command: " + command);
+    handleSwitches(command);
+  }
 
-// Serial.println("Finished handling switch command.");
-// Serial.println("------------------------------");
-// Serial.println();
+  // Serial.println("Finished handling switch command.");
+  // Serial.println("------------------------------");
+  // Serial.println();
   // === Try to parse command as structured AC command ===
   // Command ac = parseCommand(command);
   // DEBUG_PRINTLN("🔍 Parsed Command:");
@@ -268,7 +268,7 @@ if(command == "sw1:1" || command == "sw1:0" ||
     msg_id = generateMessageID();
   }
 
-  delay(random(20, 201));
+  delay(random(70, 271));
   String ack = String(nodeID) + "," + sender + "," + command + ",smswt_ack," + msg_id;
   DEBUG_PRINTLN("📤 ACK: " + ack);
   esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
@@ -295,6 +295,8 @@ void PublishHeartbeat() {
     (isRepeater ? "1" : "0") +
     ",smswt_hb," +
     generateMessageID();
+
+  delay(random(70, 271));
 
   DEBUG_PRINTLN("Heartbeat: " + hb);
   esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
@@ -327,8 +329,10 @@ void PublishSwitchStatus(){
     "/sw2:" + (sw2State ? "1" : "0") +
     "/sw3:" + (sw3State ? "1" : "0") +
     "/sw4:" + (sw4State ? "1" : "0") +
-    ",smswt_hb," +
+    ",smswt_ack," +
     generateMessageID();
+
+  delay(random(70, 271));
 
   DEBUG_PRINTLN("Heartbeat: " + hb);
   esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());

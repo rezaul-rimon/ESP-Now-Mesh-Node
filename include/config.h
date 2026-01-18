@@ -21,9 +21,6 @@ bool isRepeater = false;
   #define NODE_ID "1225005"
 #endif
 
-//Device Setup
-// const char* nodeID = "01001";
-// bool isRepeater   = false;
 const char* MasterID = "9999999"; // Set Master ID if needed
 
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
