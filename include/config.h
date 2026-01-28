@@ -18,7 +18,7 @@ bool isRepeater = false;
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "1225005"
+  #define NODE_ID "1225213"
 #endif
 
 const char* MasterID = "9999999"; // Set Master ID if needed
