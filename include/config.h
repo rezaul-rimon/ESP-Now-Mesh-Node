@@ -14,14 +14,14 @@ bool isButtonPressed = false; // Global flag for button press state
 char nodeID[20];     // Global, mutable buffer
 bool isRepeater = false;
 
-#define CHANGE_DEVICE_CONFIG 0
+#define CHANGE_DEVICE_CONFIG 1
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "1225213"
+  #define NODE_ID "1225032602220001"
 #endif
 
-const char* MasterID = "9999999"; // Set Master ID if needed
+// const char* MasterID = "9999999"; // Set Master ID if needed
 
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 

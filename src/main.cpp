@@ -38,7 +38,7 @@ Command parseCommand(const String &cmdStr) {
 String lastCmdID;
 // cache recent rebroadcasts to stop loops
 std::deque<String> fwdCache;
-const size_t MAX_FWDS=20;
+const size_t MAX_FWDS=100;
 
 // Check if a message has already been forwarded
 bool alreadyForwarded(const String &key) {
@@ -124,13 +124,18 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   rebroadcastIfNeeded(msg_id, type, msg);
 
   // Check if message is intended for this node
-  if ((receiver != nodeID) && (receiver != MasterID)) {
+  // if ((receiver != nodeID) && (receiver != MasterID)) {
+  //   Serial.printf("⏭ Not my message (receiver: %s)\n", receiver.c_str());
+  //   return;
+  // }
+
+  if (receiver != nodeID) {
     Serial.printf("⏭ Not my message (receiver: %s)\n", receiver.c_str());
     return;
   }
 
   // Handle ACKs (don't process further)
-  if (type == "ack") {
+  if (type == "smswt_ack") {
     DEBUG_PRINTLN("ℹ️ ACK received, no further processing.");
     return;
   }
@@ -171,7 +176,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
     DEBUG_PRINTLN("🔁 Repeater mode enabled (live update).");
 
-    String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+    String ack = String(nodeID) + "," + sender + "," + command + ",smswt_ack," + msg_id;
     DEBUG_PRINTLN("📤 ACK: " + ack);
     esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 
@@ -202,7 +207,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
 
     DEBUG_PRINTLN("🔁 Repeater mode disabled (live update).");
 
-    String ack = String(nodeID) + "," + sender + "," + command + ",ack," + msg_id;
+    String ack = String(nodeID) + "," + sender + "," + command + ",smswt_ack," + msg_id;
     DEBUG_PRINTLN("📤 ACK: " + ack);
     esp_now_send(broadcastAddress, (uint8_t *)ack.c_str(), ack.length());
 
@@ -264,9 +269,9 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   // === Send ACK ===
   // Serial.println("Sending ACK back to sender...");
 
-  if(receiver == MasterID){
-    msg_id = generateMessageID();
-  }
+  // if(receiver == MasterID){
+  //   msg_id = generateMessageID();
+  // }
 
   delay(random(70, 271));
   String ack = String(nodeID) + "," + sender + "," + command + ",smswt_ack," + msg_id;
@@ -283,16 +288,17 @@ String generateMessageID() {
 }
 
 void PublishHeartbeat() {
-  preferences.begin("switches", false);  // Open Preferences storage
-  bool sw1State = preferences.getBool("sw1", false);
-  bool sw2State = preferences.getBool("sw2", false);
-  bool sw3State = preferences.getBool("sw3", false);
-  bool sw4State = preferences.getBool("sw4", false);
-  preferences.end();
+  // preferences.begin("switches", false);  // Open Preferences storage
+  // bool sw1State = preferences.getBool("sw1", false);
+  // bool sw2State = preferences.getBool("sw2", false);
+  // bool sw3State = preferences.getBool("sw3", false);
+  // bool sw4State = preferences.getBool("sw4", false);
+  // preferences.end();
 
-  String hb = String(nodeID) +
-    ",gw,heartbeat/R:" +
-    (isRepeater ? "1" : "0") +
+  String hb = 
+    String(nodeID) +
+    ",gw0" +
+    ",heartbeat/R:" +(isRepeater ? "1" : "0") +
     ",smswt_hb," +
     generateMessageID();
 
@@ -322,9 +328,10 @@ void PublishSwitchStatus(){
   bool sw4State = preferences.getBool("sw4", false);
   preferences.end();
 
-  String hb = String(nodeID) +
-    ",gw,R:" +
-    (isRepeater ? "1" : "0") +
+  String state = 
+    String(nodeID) +
+    ",gw0" +
+    ",R:" +(isRepeater ? "1" : "0") +
     "/sw1:" + (sw1State ? "1" : "0") +
     "/sw2:" + (sw2State ? "1" : "0") +
     "/sw3:" + (sw3State ? "1" : "0") +
@@ -334,8 +341,8 @@ void PublishSwitchStatus(){
 
   delay(random(70, 271));
 
-  DEBUG_PRINTLN("Heartbeat: " + hb);
-  esp_now_send(broadcastAddress, (uint8_t *)hb.c_str(), hb.length());
+  DEBUG_PRINTLN("Switch State: " + state);
+  esp_now_send(broadcastAddress, (uint8_t *)state.c_str(), state.length());
 
   leds[0] = CRGB::Blue;  // Indicate heartbeat with yellow LED
   FastLED.show();
