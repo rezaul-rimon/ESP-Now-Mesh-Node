@@ -14,11 +14,11 @@ bool isButtonPressed = false; // Global flag for button press state
 char nodeID[20];     // Global, mutable buffer
 bool isRepeater = false;
 
-#define CHANGE_DEVICE_CONFIG 1
+#define CHANGE_DEVICE_CONFIG 0
 
 #if CHANGE_DEVICE_CONFIG
   #define IS_REPEATER false
-  #define NODE_ID "1225032602220001"
+  #define NODE_ID "1225303"
 #endif
 
 // const char* MasterID = "9999999"; // Set Master ID if needed
