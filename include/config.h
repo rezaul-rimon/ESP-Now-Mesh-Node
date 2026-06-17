@@ -1,5 +1,6 @@
-#define USE_DS18B20
+// #define USE_DS18B20
 // #define USE_SHT3X
+#define USE_NTC_SENSOR
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -7,6 +8,7 @@
 #include <FastLED.h>
 #include <deque>
 #include <algorithm>
+#include <NTC.h>
 
 #if defined(USE_SHT3X)
     #include <Wire.h>
@@ -44,8 +46,11 @@
 CRGB leds[NUM_LEDS];
 //=============================================//
 
-const char* nodeID = "11008";
-bool isRepeater   = false;
+#define BTN_PIN 0
+bool btn = false; // Just a test variable for now
+
+const char* nodeID = "12002"; //10xxx for SHT, 11xxx for DS18B20, 12xxx for NTC
+bool isRepeater   = false; // Set to true to enable rebroadcasting of messages not intended for this node
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 //============================================================//
 

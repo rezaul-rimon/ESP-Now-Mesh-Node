@@ -1,5 +1,19 @@
 #include <config.h>
 
+#ifdef USE_NTC_SENSOR
+  #define NTC_PIN 35  // GPIO35 for NTC sensor
+  #define NTC_ADC_MAX 4095.0
+  #define NTC_VREF 3.3
+  #define NTC_SERIES_RESISTOR 10000.0
+  #define NTC_NOMINAL_RESISTANCE 10000.0
+  #define NTC_NOMINAL_TEMPERATURE 25.0
+  #define NTC_BETA 3950.0
+  #define NTC_SAMPLE_COUNT 20
+  #define NTC_OFFSET_TEMP 3.5f
+
+  NTC ntcSensor(NTC_PIN, NTC_ADC_MAX, NTC_VREF, NTC_SERIES_RESISTOR, NTC_NOMINAL_RESISTANCE, NTC_NOMINAL_TEMPERATURE, NTC_BETA, NTC_SAMPLE_COUNT, NTC_OFFSET_TEMP);
+#endif
+
 // Check if a message has already been forwarded
 bool alreadyForwarded(const String &key) {
   return std::find(fwdCache.begin(), fwdCache.end(), key) != fwdCache.end();
@@ -199,6 +213,8 @@ void setup(){
         }
     }
   #endif
+
+  pinMode(BTN_PIN, INPUT_PULLUP);
   
   WiFi.mode(WIFI_STA); WiFi.disconnect();
   
@@ -256,8 +272,9 @@ void loop() {
 
   // 📤 Send sensor data (or error) every 30 seconds
   unsigned long now = millis();
-  if (now - lastHBPublishTime >= hbPublishInterval) {
+  if (now - lastHBPublishTime >= hbPublishInterval || (digitalRead(BTN_PIN) == LOW) && btn == false) {
     lastHBPublishTime = now;
+    btn = true;
 
     #if defined(USE_SHT3X)
       String tempHum;
@@ -294,12 +311,27 @@ void loop() {
       }
     #endif
 
+    #if defined(USE_NTC_SENSOR)
+      // NTC Sensor Reading
+      float temp = ntcSensor.readTemperature();
+
+      String tempStr = String(temp, 2);
+      String msg = String(nodeID) + ",gw," + tempStr + "/55.66" ",tmp," + generateMessageID();
+
+      Serial.println("📤 Sending Temp: " + msg);
+      esp_now_send(broadcastAddress, (uint8_t *)msg.c_str(), msg.length());
+    #endif
+
     // 🔵 Blink blue LED briefly to show transmission
     leds[0] = CRGB::Green;
     FastLED.show();
     delay(250);
     leds[0] = CRGB::Black;
     FastLED.show();
+  }
+
+  if (digitalRead(BTN_PIN) == HIGH) {
+    btn = false;
   }
 
   delay(10);  // Minimal blocking
