@@ -4,7 +4,7 @@
   #define NTC_PIN 35  // GPIO35 for NTC sensor
   #define NTC_ADC_MAX 4095.0
   #define NTC_VREF 3.3
-  #define NTC_SERIES_RESISTOR 10000.0
+  #define NTC_SERIES_RESISTOR 4500.0
   #define NTC_NOMINAL_RESISTANCE 10000.0
   #define NTC_NOMINAL_TEMPERATURE 25.0
   #define NTC_BETA 3950.0

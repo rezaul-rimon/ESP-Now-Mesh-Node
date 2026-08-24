@@ -49,7 +49,7 @@ CRGB leds[NUM_LEDS];
 #define BTN_PIN 0
 bool btn = false; // Just a test variable for now
 
-const char* nodeID = "12002"; //10xxx for SHT, 11xxx for DS18B20, 12xxx for NTC
+const char* nodeID = "12007"; //10xxx for SHT, 11xxx for DS18B20, 12xxx for NTC
 bool isRepeater   = false; // Set to true to enable rebroadcasting of messages not intended for this node
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 //============================================================//
